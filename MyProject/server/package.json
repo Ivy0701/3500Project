@@ -1,0 +1,27 @@
+{
+  "name": "inventory-sales-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "init:users": "node src/scripts/initUsers.js",
+    "update:usernames": "node src/scripts/updateUserNames.js",
+    "update:all-usernames-english": "node src/scripts/updateAllUserNamesToEnglish.js",
+    "delete:east-store1-orders": "node src/scripts/deleteEastStore1Orders.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.1.0",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
+
