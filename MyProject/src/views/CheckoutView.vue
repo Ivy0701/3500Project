@@ -582,6 +582,31 @@ const resolveInventoryLocationFromAddressAndPayment = (shippingAddress, paymentM
   return storeId;
 };
 
+// Helper function to get all stores in the same region as a given store
+const getRegionStores = (storeId) => {
+  const DEFAULT_STORE_LOCATION_ID = 'STORE-DEFAULT';
+  if (!storeId || !storeId.startsWith('STORE-') || storeId === DEFAULT_STORE_LOCATION_ID) {
+    return [storeId || DEFAULT_STORE_LOCATION_ID];
+  }
+  
+  // Extract region from store ID (e.g., STORE-EAST-01 -> EAST)
+  const parts = storeId.split('-');
+  if (parts.length < 3) {
+    return [storeId];
+  }
+  
+  const region = parts[1]; // EAST, WEST, NORTH, SOUTH
+  
+  const REGION_STORES = {
+    EAST: ['STORE-EAST-01', 'STORE-EAST-02'],
+    WEST: ['STORE-WEST-01', 'STORE-WEST-02'],
+    NORTH: ['STORE-NORTH-01', 'STORE-NORTH-02'],
+    SOUTH: ['STORE-SOUTH-01', 'STORE-SOUTH-02']
+  };
+  
+  return REGION_STORES[region] || [storeId];
+};
+
 const submitOrder = async () => {
   if (cartItems.value.length === 0) {
     window.alert('Your cart is empty');
@@ -622,25 +647,46 @@ const submitOrder = async () => {
   }
 
   // Check inventory availability before submitting order
+  // 检查同一区域所有门店的库存，只要有一个门店满足需求就可以下单
   const storeLocationId = resolveInventoryLocationFromAddressAndPayment(addressForm, selectedPaymentMethod.value);
+  const regionStores = getRegionStores(storeLocationId);
   
   try {
-    // Get inventory for the store location
-    const inventoryList = await getInventoryByLocation(storeLocationId);
-    const inventoryMap = {};
-    inventoryList.forEach(item => {
-      inventoryMap[item.productId] = item;
-    });
-
-    // Check each item in cart
-    for (const item of cartItems.value) {
-      const inventory = inventoryMap[item.id];
-      if (!inventory) {
-        window.alert(`Product ${item.name} is not available at the selected store location. Current inventory insufficient.`);
-        return;
+    // 获取同一区域所有门店的库存
+    const allStoreInventories = {};
+    for (const storeId of regionStores) {
+      try {
+        const inventoryList = await getInventoryByLocation(storeId);
+        allStoreInventories[storeId] = {};
+        inventoryList.forEach(item => {
+          allStoreInventories[storeId][item.productId] = item;
+        });
+      } catch (storeError) {
+        console.warn(`Failed to get inventory for store ${storeId}:`, storeError);
+        // 继续检查其他门店
       }
-      if (inventory.available < item.quantity) {
-        window.alert(`Insufficient inventory for ${item.name}. Available: ${inventory.available}, Requested: ${item.quantity}. Current inventory insufficient.`);
+    }
+
+    // 检查每个商品是否至少在一个门店有足够的库存
+    for (const item of cartItems.value) {
+      let itemAvailable = false;
+      let maxAvailable = 0;
+      
+      // 检查所有门店的库存
+      for (const storeId of regionStores) {
+        const storeInventory = allStoreInventories[storeId];
+        if (storeInventory && storeInventory[item.id]) {
+          const inventory = storeInventory[item.id];
+          maxAvailable = Math.max(maxAvailable, inventory.available || 0);
+          if (inventory.available >= item.quantity) {
+            itemAvailable = true;
+            break; // 找到一个有足够库存的门店就足够了
+          }
+        }
+      }
+      
+      if (!itemAvailable) {
+        window.alert(`Insufficient inventory for ${item.name}. Maximum available in region: ${maxAvailable}, Requested: ${item.quantity}. Current inventory insufficient.`);
         return;
       }
     }

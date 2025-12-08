@@ -89,13 +89,14 @@
             </div>
           </div>
           <span class="col">
-            <span v-if="transfer.fromLocationName === '-' && transfer.toLocationName === '-'">-</span>
-            <span v-else>{{ transfer.fromLocationName }} → {{ transfer.toLocationName }}</span>
+            <span v-if="transfer.fromLocationName && transfer.fromLocationName !== '-'">{{ transfer.fromLocationName }} → {{ transfer.toLocationName }}</span>
+            <span v-else-if="transfer.toLocationName && transfer.toLocationName !== '-'">→ {{ transfer.toLocationName }}</span>
+            <span v-else>-</span>
           </span>
           <span class="col">{{ transfer.productName }}</span>
           <span class="col">
-            <span class="tag" :class="applicationStatusClass(transfer.requestStatus || transfer.status)">
-              {{ applicationStatusLabel(transfer.requestStatus || transfer.status) }}
+            <span class="tag" :class="applicationStatusClass(transfer.status)">
+              {{ applicationStatusLabel(transfer.status) }}
             </span>
           </span>
         </div>
@@ -168,7 +169,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed, onMounted } from 'vue';
+import { reactive, ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import {
   fetchReplenishmentApplications,
   updateReplenishmentApplicationStatus
@@ -214,6 +215,7 @@ const decisionRemark = ref('');
 const allocationFormVisible = ref(false);
 const loading = ref(false);
 const recentAllocations = ref([]);
+const refreshIntervalId = ref(null);
 
 const transfer = reactive({
   from: 'Central Warehouse',
@@ -222,6 +224,71 @@ const transfer = reactive({
   quantity: 0,
   reason: ''
 });
+
+// 保存表单数据到 localStorage
+const saveTransferFormToStorage = (requestId) => {
+  if (!requestId) return;
+  try {
+    const formData = {
+      from: transfer.from,
+      to: transfer.to,
+      sku: transfer.sku,
+      quantity: transfer.quantity,
+      reason: transfer.reason,
+      savedAt: Date.now()
+    };
+    localStorage.setItem(`transferForm_${requestId}`, JSON.stringify(formData));
+  } catch (error) {
+    console.warn('Failed to save transfer form data:', error);
+  }
+};
+
+// 从 localStorage 恢复表单数据
+const loadTransferFormFromStorage = (requestId) => {
+  if (!requestId) return false;
+  try {
+    const saved = localStorage.getItem(`transferForm_${requestId}`);
+    if (saved) {
+      const formData = JSON.parse(saved);
+      // 检查数据是否过期（7天）
+      if (formData.savedAt && Date.now() - formData.savedAt < 7 * 24 * 60 * 60 * 1000) {
+        transfer.from = formData.from || 'Central Warehouse';
+        transfer.to = formData.to || '';
+        transfer.sku = formData.sku || '';
+        transfer.quantity = formData.quantity || 0;
+        transfer.reason = formData.reason || '';
+        return true;
+      } else {
+        // 清除过期的数据
+        localStorage.removeItem(`transferForm_${requestId}`);
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load transfer form data:', error);
+  }
+  return false;
+};
+
+// 清除保存的表单数据
+const clearTransferFormStorage = (requestId) => {
+  if (!requestId) return;
+  try {
+    localStorage.removeItem(`transferForm_${requestId}`);
+  } catch (error) {
+    console.warn('Failed to clear transfer form data:', error);
+  }
+};
+
+// 监听表单字段变化，自动保存
+watch(
+  () => [transfer.from, transfer.to, transfer.sku, transfer.quantity, transfer.reason],
+  () => {
+    if (selectedApplication.value?.requestId && allocationFormVisible.value) {
+      saveTransferFormToStorage(selectedApplication.value.requestId);
+    }
+  },
+  { deep: true }
+);
 
 const applicationStatusLabel = (status) => statusMap[status]?.label || status;
 const applicationStatusClass = (status) => statusMap[status]?.class || 'default';
@@ -266,15 +333,29 @@ const loadApplications = async () => {
     }
 
     // 如果选中的申请状态是 APPROVED，显示分配表单
-    allocationFormVisible.value = selectedApplication.value?.status === 'APPROVED';
+    const shouldShowForm = selectedApplication.value?.status === 'APPROVED';
     
-    // 如果状态是 APPROVED，自动填充分配表单
-    if (allocationFormVisible.value && selectedApplication.value) {
-      transfer.from = 'Central Warehouse';
-      transfer.to = selectedApplication.value.warehouseName || '';
-      transfer.sku = selectedApplication.value.productId || '';
-      transfer.quantity = selectedApplication.value.quantity || 0;
-      transfer.reason = selectedApplication.value.reason || '';
+    // 只有在表单状态发生变化时（从隐藏变为显示）才恢复/填充数据
+    // 如果表单已经在显示，说明用户可能正在填写，不要覆盖
+    if (shouldShowForm && selectedApplication.value) {
+      if (!allocationFormVisible.value) {
+        // 表单从隐藏变为显示，尝试恢复或填充数据
+        allocationFormVisible.value = true;
+        const requestId = selectedApplication.value.requestId;
+        const hasSavedData = loadTransferFormFromStorage(requestId);
+        
+        // 如果没有保存的数据，才自动填充默认值
+        if (!hasSavedData) {
+          transfer.from = 'Central Warehouse';
+          transfer.to = selectedApplication.value.warehouseName || '';
+          transfer.sku = selectedApplication.value.productId || '';
+          transfer.quantity = selectedApplication.value.quantity || 0;
+          transfer.reason = selectedApplication.value.reason || '';
+        }
+      }
+      // 如果表单已经在显示，保持当前状态，不覆盖用户输入
+    } else {
+      allocationFormVisible.value = false;
     }
   } finally {
     loading.value = false;
@@ -286,8 +367,8 @@ const loadRecentAllocations = async () => {
     // 加载所有补货申请（已批准或已创建调拨单的）
     const allApplications = await fetchReplenishmentApplications();
     
-    // 加载所有调拨单
-    const transfers = await fetchTransfers('WH-CENTRAL');
+    // 加载所有调拨单（不指定locationId以获取所有调拨单）
+    const transfers = await fetchTransfers();
     
     // 创建一个 map，用于快速查找调拨单
     const transferMap = new Map();
@@ -309,16 +390,42 @@ const loadRecentAllocations = async () => {
       const relatedTransfer = transferMap.get(app.requestId);
       
       if (relatedTransfer) {
-        // 已创建调拨单：显示调拨单信息，From → To 为实际值
+        // 已创建调拨单：显示调拨单信息，使用调拨单的状态和From信息
+        // 状态应该从调拨单读取，而不是从补货申请读取，以确保与区域仓库收货状态一致
+        // 将TransferOrder的状态映射到显示状态：
+        // COMPLETED -> ARRIVED, IN_TRANSIT -> IN_TRANSIT
+        let displayStatus = 'IN_TRANSIT'; // 默认状态
+        if (relatedTransfer.status === 'COMPLETED') {
+          displayStatus = 'ARRIVED';
+        } else if (relatedTransfer.status === 'IN_TRANSIT') {
+          displayStatus = 'IN_TRANSIT';
+        } else if (relatedTransfer.status === 'PENDING') {
+          displayStatus = 'APPROVED'; // 如果还在pending，显示approved
+        }
+        
+        // 确保fromLocationName从transfer读取，如果为空则从fromLocationId推导
+        let fromName = relatedTransfer.fromLocationName;
+        if (!fromName && relatedTransfer.fromLocationId) {
+          // 如果fromLocationName为空，从fromLocationId推导
+          const locationIdToName = {
+            'WH-CENTRAL': 'Central Warehouse',
+            'WH-EAST': 'East Warehouse',
+            'WH-WEST': 'West Warehouse',
+            'WH-NORTH': 'North Warehouse',
+            'WH-SOUTH': 'South Warehouse'
+          };
+          fromName = locationIdToName[relatedTransfer.fromLocationId] || relatedTransfer.fromLocationId;
+        }
+        
         allocations.push({
           transferId: relatedTransfer.transferId,
           requestId: app.requestId,
           productSku: app.productId,
           productName: app.productName,
           quantity: app.quantity,
-          fromLocationName: relatedTransfer.fromLocationName,
-          toLocationName: relatedTransfer.toLocationName,
-          status: app.status, // 使用补货申请的状态
+          fromLocationName: fromName || app.warehouseName, // 如果有fromName就使用，否则使用warehouseName（作为最后的fallback）
+          toLocationName: relatedTransfer.toLocationName || app.warehouseName,
+          status: displayStatus,
           createdAt: relatedTransfer.createdAt || app.updatedAt || app.createdAt
         });
       } else if (app.status === 'APPROVED' || app.status === 'REJECTED') {
@@ -347,18 +454,28 @@ const loadRecentAllocations = async () => {
 };
 
 const selectApplication = (application) => {
+  // 在切换申请前，保存当前申请的表单数据
+  if (selectedApplication.value?.requestId && allocationFormVisible.value) {
+    saveTransferFormToStorage(selectedApplication.value.requestId);
+  }
+  
   selectedApplication.value = application;
   
   if (application) {
     allocationFormVisible.value = application.status === 'APPROVED';
     
-    // 如果状态是 APPROVED，自动填充分配表单
+    // 如果状态是 APPROVED，尝试从 localStorage 恢复表单数据
     if (allocationFormVisible.value) {
-      transfer.from = 'Central Warehouse';
-      transfer.to = application.warehouseName || '';
-      transfer.sku = application.productId || '';
-      transfer.quantity = application.quantity || 0;
-      transfer.reason = application.reason || '';
+      const hasSavedData = loadTransferFormFromStorage(application.requestId);
+      
+      // 如果没有保存的数据，才自动填充默认值
+      if (!hasSavedData) {
+        transfer.from = 'Central Warehouse';
+        transfer.to = application.warehouseName || '';
+        transfer.sku = application.productId || '';
+        transfer.quantity = application.quantity || 0;
+        transfer.reason = application.reason || '';
+      }
     } else {
       // 如果不是 APPROVED 状态，清空表单
       transfer.from = 'Central Warehouse';
@@ -411,12 +528,18 @@ const approve = async (approved) => {
     // 根据状态设置 allocationFormVisible
     if (approved && selectedApplication.value?.status === 'APPROVED') {
       allocationFormVisible.value = true;
-      // 自动填充分配表单
-      transfer.from = 'Central Warehouse';
-      transfer.to = selectedApplication.value.warehouseName || '';
-      transfer.sku = selectedApplication.value.productId || '';
-      transfer.quantity = selectedApplication.value.quantity || 0;
-      transfer.reason = selectedApplication.value.reason || '';
+      // 尝试从 localStorage 恢复表单数据
+      const requestId = selectedApplication.value.requestId;
+      const hasSavedData = loadTransferFormFromStorage(requestId);
+      
+      // 如果没有保存的数据，才自动填充默认值
+      if (!hasSavedData) {
+        transfer.from = 'Central Warehouse';
+        transfer.to = selectedApplication.value.warehouseName || '';
+        transfer.sku = selectedApplication.value.productId || '';
+        transfer.quantity = selectedApplication.value.quantity || 0;
+        transfer.reason = selectedApplication.value.reason || '';
+      }
     } else {
       allocationFormVisible.value = false;
       // 清空表单
@@ -460,6 +583,10 @@ const allocate = async () => {
       toLocationName: transfer.to,
       requestId: selectedApplication.value.requestId
     });
+    
+    // 清除保存的表单数据
+    clearTransferFormStorage(selectedApplication.value.requestId);
+    
     // 重新加载应用和调拨单列表
     await loadApplications();
     await loadRecentAllocations();
@@ -469,14 +596,40 @@ const allocate = async () => {
   }
 };
 
+// 页面可见性变化时保存（用户切换标签页或最小化窗口）
+const handleVisibilityChange = () => {
+  if (document.hidden && selectedApplication.value?.requestId && allocationFormVisible.value) {
+    saveTransferFormToStorage(selectedApplication.value.requestId);
+  }
+};
+
 onMounted(async () => {
+  // 添加页面可见性监听
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  
   await loadApplications();
   await loadRecentAllocations();
   // 定期刷新申请列表和调拨单列表
-  setInterval(() => {
+  refreshIntervalId.value = setInterval(() => {
     loadApplications();
     loadRecentAllocations();
   }, 5000); // 每5秒刷新一次
+});
+
+// 页面卸载前保存表单数据并清理资源
+onUnmounted(() => {
+  // 保存当前表单数据
+  if (selectedApplication.value?.requestId && allocationFormVisible.value) {
+    saveTransferFormToStorage(selectedApplication.value.requestId);
+  }
+  
+  // 清除定时器
+  if (refreshIntervalId.value) {
+    clearInterval(refreshIntervalId.value);
+  }
+  
+  // 移除事件监听
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 </script>
 

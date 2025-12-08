@@ -36,8 +36,17 @@ export const createTransferOrder = async (req, res, next) => {
 
     let transferDoc;
     await session.withTransaction(async () => {
-      // 注意：库存更新将在确认收货时进行，而不是在创建调拨单时
-      // 这样可以确保只有在货物实际到达并确认后才更新库存
+      // 在创建调拨单时就从fromLocationId减少库存
+      // 这样可以确保从选择的仓库立即扣除库存
+      console.log(`[Transfer] Reducing inventory at source: ${fromLocationId}, product: ${productSku}, quantity: -${quantity}`);
+      await adjustInventory({
+        locationId: fromLocationId,
+        locationName: fromLocationName || fromLocationId,
+        productSku: productSku,
+        productName: productName,
+        delta: -quantity,
+        session
+      });
 
       transferDoc = await TransferOrder.create(
         [
@@ -53,22 +62,23 @@ export const createTransferOrder = async (req, res, next) => {
             status: 'IN_TRANSIT',
             history: [
               { status: 'PENDING', note: 'Transfer order created', createdAt: new Date() },
-              { status: 'IN_TRANSIT', note: 'Dispatched by central warehouse', createdAt: new Date() }
+              { status: 'IN_TRANSIT', note: 'Dispatched', createdAt: new Date() }
             ],
-            inventoryUpdated: false,
+            inventoryUpdated: true, // 已在创建时更新库存
             requestId: requestId || null
           }
         ],
         { session }
       );
 
+      // 使用fromLocationName作为supplier，而不是硬编码'Central Warehouse'
       await ReceivingSchedule.create(
         [
           {
             planNo: transferId,
-            supplier: 'Central Warehouse',
+            supplier: fromLocationName || fromLocationId,
             eta: new Date(Date.now() + 2 * 24 * 3600 * 1000),
-            dock: 'Central-Dock',
+            dock: fromLocationId === 'WH-CENTRAL' ? 'Central-Dock' : `${fromLocationId}-Dock`,
             items: 1,
             productSku,
             productName,

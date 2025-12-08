@@ -72,45 +72,18 @@ export const completeReceiving = async (req, res, next) => {
     let responsePayload;
     await session.withTransaction(async () => {
       const transfer = await TransferOrder.findOne({ transferId: planNo }).session(session);
-      const isInternalTransfer = transfer && transfer.fromLocationId === 'WH-CENTRAL' && transfer.toLocationId.startsWith('WH-');
       
-      // 如果是内部调拨（总仓库到区域仓库），在确认收货时更新库存
-      if (isInternalTransfer && transfer && !transfer.inventoryUpdated) {
-        // 1. 减少来源仓库（总仓库）的库存
-        console.log(`[Receiving] Reducing inventory at source: ${transfer.fromLocationId}, product: ${schedule.productSku}, quantity: -${received}`);
-        await adjustInventory({
-          locationId: transfer.fromLocationId,
-          locationName: transfer.fromLocationName || transfer.fromLocationId,
-          productSku: schedule.productSku,
-          productName: schedule.productName,
-          delta: -received,
-          session
-        });
-        
-        // 2. 增加目标仓库（区域仓库）的库存
-        console.log(`[Receiving] Increasing inventory at destination: ${storageLocationId}, product: ${schedule.productSku}, quantity: +${received}`);
-        await adjustInventory({
-          locationId: storageLocationId,
-          locationName: storageLocationId,
-          productSku: schedule.productSku,
-          productName: schedule.productName,
-          delta: received,
-          session
-        });
-        
-        transfer.inventoryUpdated = true;
-        await transfer.save({ session });
-      } else if (!isInternalTransfer) {
-        // 外部供应商到仓库，只增加目标仓库库存
-        await adjustInventory({
-          locationId: storageLocationId,
-          locationName: storageLocationId,
-          productSku: schedule.productSku,
-          productName: schedule.productName,
-          delta: received,
-          session
-        });
-      }
+      // 在确认收货时，只增加目标仓库的库存
+      // 来源仓库的库存已在创建调拨单时减少
+      console.log(`[Receiving] Increasing inventory at destination: ${storageLocationId}, product: ${schedule.productSku}, quantity: +${received}`);
+      await adjustInventory({
+        locationId: storageLocationId,
+        locationName: storageLocationId,
+        productSku: schedule.productSku,
+        productName: schedule.productName,
+        delta: received,
+        session
+      });
 
       schedule.status = 'ARRIVED';
       schedule.storageLocationId = storageLocationId;
@@ -133,6 +106,7 @@ export const completeReceiving = async (req, res, next) => {
         { session }
       );
 
+      // 更新调拨单状态为COMPLETED，并同步更新补货申请状态
       if (transfer) {
         transfer.status = 'COMPLETED';
         transfer.inventoryUpdated = true;
@@ -143,6 +117,7 @@ export const completeReceiving = async (req, res, next) => {
         });
         await transfer.save({ session });
 
+        // 同步更新补货申请状态为ARRIVED，确保总仓库Recent Allocations状态正确
         if (transfer.requestId) {
           await ReplenishmentRequest.findOneAndUpdate(
             { requestId: transfer.requestId },
