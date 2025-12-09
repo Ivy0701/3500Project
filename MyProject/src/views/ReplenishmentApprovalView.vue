@@ -170,11 +170,14 @@
 
 <script setup>
 import { reactive, ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import {
   fetchReplenishmentApplications,
   updateReplenishmentApplicationStatus
 } from '../services/replenishmentService';
 import { createTransferOrder, fetchTransfers } from '../services/transferService';
+
+const route = useRoute();
 
 const statusMap = {
   PENDING: { label: 'Pending', class: 'warning' },
@@ -306,9 +309,23 @@ const timeline = computed(() =>
 );
 
 const loadApplications = async () => {
-  loading.value = true;
+  // 只有在需要显示加载状态时才设置loading
+  // 如果数据已存在，静默刷新
+  if (applications.value.length === 0 && !selectedApplication.value) {
+    loading.value = true;
+  }
+  
   try {
     const allApplications = await fetchReplenishmentApplications();
+    
+    // 确保 allApplications 是数组
+    if (!Array.isArray(allApplications)) {
+      console.warn('fetchReplenishmentApplications returned non-array:', allApplications);
+      applications.value = [];
+      selectedApplication.value = null;
+      loading.value = false;
+      return;
+    }
     
     // 去重：根据 requestId 去重，保留最新的记录
     const uniqueApplications = [];
@@ -328,7 +345,7 @@ const loadApplications = async () => {
       selectedApplication.value = applications.value[0] || null;
     } else {
       const refreshed =
-        allApplications.find((item) => item.requestId === selectedApplication.value.requestId) || null;
+        uniqueApplications.find((item) => item.requestId === selectedApplication.value.requestId) || null;
       selectedApplication.value = refreshed || applications.value[0] || null;
     }
 
@@ -357,6 +374,12 @@ const loadApplications = async () => {
     } else {
       allocationFormVisible.value = false;
     }
+  } catch (error) {
+    console.error('Failed to load applications:', error);
+    // 确保在错误情况下也设置默认值
+    applications.value = [];
+    selectedApplication.value = null;
+    allocationFormVisible.value = false;
   } finally {
     loading.value = false;
   }
@@ -367,8 +390,22 @@ const loadRecentAllocations = async () => {
     // 加载所有补货申请（已批准或已创建调拨单的）
     const allApplications = await fetchReplenishmentApplications();
     
+    // 确保 allApplications 是数组
+    if (!Array.isArray(allApplications)) {
+      console.warn('fetchReplenishmentApplications returned non-array in loadRecentAllocations:', allApplications);
+      recentAllocations.value = [];
+      return;
+    }
+    
     // 加载所有调拨单（不指定locationId以获取所有调拨单）
     const transfers = await fetchTransfers();
+    
+    // 确保 transfers 是数组
+    if (!Array.isArray(transfers)) {
+      console.warn('fetchTransfers returned non-array:', transfers);
+      recentAllocations.value = [];
+      return;
+    }
     
     // 创建一个 map，用于快速查找调拨单
     const transferMap = new Map();
@@ -450,6 +487,8 @@ const loadRecentAllocations = async () => {
       .slice(0, 20);
   } catch (error) {
     console.error('Failed to load recent allocations:', error);
+    // 确保在错误情况下也设置默认值
+    recentAllocations.value = [];
   }
 };
 
@@ -603,18 +642,43 @@ const handleVisibilityChange = () => {
   }
 };
 
+// 数据加载函数，可重复调用
+const loadAllData = async () => {
+  // 确保数据加载，即使失败也要设置默认值
+  try {
+    await Promise.all([
+      loadApplications(),
+      loadRecentAllocations()
+    ]);
+  } catch (error) {
+    console.error('Failed to load data:', error);
+    // 确保即使加载失败也显示空状态
+    if (!applications.value) applications.value = [];
+    if (!recentAllocations.value) recentAllocations.value = [];
+  }
+};
+
 onMounted(async () => {
   // 添加页面可见性监听
   document.addEventListener('visibilitychange', handleVisibilityChange);
   
-  await loadApplications();
-  await loadRecentAllocations();
+  // 初始加载数据
+  await loadAllData();
+  
   // 定期刷新申请列表和调拨单列表
   refreshIntervalId.value = setInterval(() => {
     loadApplications();
     loadRecentAllocations();
   }, 5000); // 每5秒刷新一次
 });
+
+// 监听路由变化，确保切换回来时重新加载
+watch(() => route.path, async (newPath, oldPath) => {
+  // 如果是同一个路由但参数变化，或者从其他路由切换回来，重新加载
+  if (newPath === '/app/central/approvals' && newPath !== oldPath) {
+    await loadAllData();
+  }
+}, { immediate: false });
 
 // 页面卸载前保存表单数据并清理资源
 onUnmounted(() => {

@@ -6,50 +6,50 @@ import Inventory from '../models/Inventory.js';
 dotenv.config();
 
 /**
- * 更新西部仓库（West Warehouse）中 PROD-001 (Casual T-Shirt) 的 Available 为 400
+ * 更新东部仓库（East Warehouse）中 PROD-002 (Classic Denim Jeans) 的 Available 为 250
  * 
  * 使用方式（在项目根目录执行）：
- *   node server/src/scripts/updateWestWarehouseCasualTShirt.js
+ *   node server/src/scripts/updateEastWarehouseDenimJeans.js
  */
-const updateWestWarehouseCasualTShirt = async () => {
+const updateEastWarehouseDenimJeans = async () => {
   try {
     await connectDb();
 
-    console.log('Connected to MongoDB, updating West Warehouse Casual T-Shirt inventory...');
+    console.log('Connected to MongoDB, updating East Warehouse Classic Denim Jeans inventory...');
 
     const result = await Inventory.updateOne(
-      { productId: 'PROD-001', locationId: 'WH-WEST' },
+      { productId: 'PROD-002', locationId: 'WH-EAST' },
       {
         $set: {
-          available: 400,
-          productName: 'Casual T-Shirt',
-          locationName: 'West Warehouse',
+          available: 250,
+          productName: 'Classic Denim Jeans',
+          locationName: 'East Warehouse',
           lastUpdated: new Date()
         },
         $setOnInsert: {
           totalStock: 1000,
           minThreshold: 100,
           maxThreshold: 2000,
-          region: 'WEST'
+          region: 'EAST'
         }
       },
       { upsert: true }
     );
 
     if (result.upsertedCount > 0) {
-      console.log('✅ Created new inventory record for PROD-001 at WH-WEST with available = 400');
+      console.log('✅ Created new inventory record for PROD-002 at WH-EAST with available = 250');
     } else if (result.modifiedCount > 0) {
-      console.log('✅ Updated PROD-001 (Casual T-Shirt) at West Warehouse: available = 400');
+      console.log('✅ Updated PROD-002 (Classic Denim Jeans) at East Warehouse: available = 250');
     } else {
-      console.log('ℹ️  No changes made. Record may already have available = 400');
+      console.log('ℹ️  No changes made. Record may already have available = 250');
     }
 
     // 验证更新结果
-    const inventory = await Inventory.findOne({ productId: 'PROD-001', locationId: 'WH-WEST' });
+    const inventory = await Inventory.findOne({ productId: 'PROD-002', locationId: 'WH-EAST' });
     if (inventory) {
       console.log(`\n📦 Current inventory status:`);
       console.log(`   Product: ${inventory.productName}`);
-      console.log(`   Location: ${inventory.locationName || 'WH-WEST'}`);
+      console.log(`   Location: ${inventory.locationName || 'WH-EAST'}`);
       console.log(`   Available: ${inventory.available}`);
       console.log(`   Total Stock: ${inventory.totalStock}`);
     }
@@ -63,6 +63,6 @@ const updateWestWarehouseCasualTShirt = async () => {
   }
 };
 
-updateWestWarehouseCasualTShirt();
+updateEastWarehouseDenimJeans();
 
 

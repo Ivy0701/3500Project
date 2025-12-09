@@ -127,7 +127,7 @@
 import { computed, ref, onMounted, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { useAppStore } from '../store/appStore';
-import { fetchReplenishmentAlerts } from '../services/replenishmentService';
+import { fetchReplenishmentAlerts, fetchReplenishmentApplications } from '../services/replenishmentService';
 import { fetchTransfers } from '../services/transferService';
 import { fetchOrders } from '../services/orderService';
 
@@ -140,6 +140,8 @@ const userRole = computed(() => appStore.user.role);
 const inventoryAlerts = ref([]);
 // 区域仓库管理员的待处理补货任务（从后端获取）
 const pendingReplenishmentTasks = ref([]);
+// 总仓库管理员的待审批申请队列（从后端获取）
+const centralApprovalQueue = ref([]);
 
 // 根据角色决定使用哪个数据源
 const alerts = computed(() => {
@@ -168,6 +170,9 @@ const tasksForRole = computed(() => {
 const taskCount = computed(() => {
   if (userRole.value === 'sales') {
     return pendingAfterSalesRequests.value.length;
+  }
+  if (userRole.value === 'centralManager') {
+    return centralApprovalQueue.value.length;
   }
   return tasksForRole.value.length;
 });
@@ -327,11 +332,92 @@ const loadRegionalManagerData = async () => {
   }
 };
 
+// 加载总仓库管理员的待审批申请队列
+const loadCentralManagerData = async () => {
+  try {
+    const allApplications = await fetchReplenishmentApplications();
+    
+    // 去重：根据 requestId 去重，保留最新的记录
+    const uniqueApplications = [];
+    const seenRequestIds = new Set();
+    for (const app of allApplications) {
+      if (!seenRequestIds.has(app.requestId)) {
+        seenRequestIds.add(app.requestId);
+        uniqueApplications.push(app);
+      }
+    }
+    
+    // 待审批的申请：PENDING 和 PROCESSING 状态
+    const pendingStatuses = ['PENDING', 'PROCESSING'];
+    const pendingApps = uniqueApplications.filter((item) => pendingStatuses.includes(item.status));
+    
+    // 映射为 Dashboard 显示的格式
+    centralApprovalQueue.value = pendingApps.map(app => {
+      // 根据库存水平和数量判断优先级
+      let level = 'info';
+      let levelLabel = 'Review';
+      
+      // 如果库存为0或极低，标记为Urgent
+      const stock = app.stock || 0;
+      const threshold = app.threshold || 0;
+      if (stock === 0 || stock < threshold * 0.5) {
+        level = 'warning';
+        levelLabel = 'Urgent';
+      } else if (app.quantity >= 200) {
+        level = 'warning';
+        levelLabel = 'Urgent';
+      } else if (app.quantity >= 100) {
+        level = 'info';
+        levelLabel = 'Review';
+      } else {
+        level = 'default';
+        levelLabel = 'Normal';
+      }
+      
+      // 格式化提交时间
+      const submittedAt = app.createdAt || app.updatedAt || new Date();
+      const date = new Date(submittedAt);
+      const timeText = date.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+      });
+      
+      return {
+        id: app.requestId,
+        product: app.productName || app.productId,
+        warehouse: app.warehouseName || app.warehouseId || 'Unknown',
+        quantity: app.quantity || 0,
+        time: timeText,
+        level,
+        levelLabel
+      };
+    });
+  } catch (error) {
+    console.error('Failed to load central manager approval queue:', error);
+    centralApprovalQueue.value = [];
+  }
+};
+
 onMounted(() => {
   if (userRole.value === 'sales') {
     loadSalesAfterSalesRequests();
+    // 定期刷新售后请求
+    setInterval(() => {
+      loadSalesAfterSalesRequests();
+    }, 10000); // 每10秒刷新
   } else if (userRole.value === 'regionalManager') {
     loadRegionalManagerData();
+    // 定期刷新区域管理员数据
+    setInterval(() => {
+      loadRegionalManagerData();
+    }, 10000); // 每10秒刷新
+  } else if (userRole.value === 'centralManager') {
+    loadCentralManagerData();
+    // 定期刷新总仓库管理员数据
+    setInterval(() => {
+      loadCentralManagerData();
+    }, 10000); // 每10秒刷新
   }
 });
 
@@ -341,18 +427,16 @@ watch(userRole, (newRole) => {
     loadSalesAfterSalesRequests();
   } else if (newRole === 'regionalManager') {
     loadRegionalManagerData();
+  } else if (newRole === 'centralManager') {
+    loadCentralManagerData();
   } else {
-    // 如果不是销售员或区域仓库管理员，清空数据
+    // 如果不是已知角色，清空数据
     pendingAfterSalesRequests.value = [];
     inventoryAlerts.value = [];
     pendingReplenishmentTasks.value = [];
+    centralApprovalQueue.value = [];
   }
 });
-
-const centralApprovalQueue = ref([
-  { id: 'RA-20251128-018', product: 'Jogger Pants', warehouse: 'East China', quantity: 300, time: '09:20', level: 'warning', levelLabel: 'Urgent' },
-  { id: 'RA-20251126-009', product: 'Hooded Sweatshirt', warehouse: 'South China', quantity: 200, time: '09:45', level: 'info', levelLabel: 'Review' }
-]);
 
 const supplierFollowUps = ref([
   { id: 'sup-1', title: 'JingCai SLA Renewal', desc: 'Confirm 2026 capacity planning', deadline: 'Next Monday' },
