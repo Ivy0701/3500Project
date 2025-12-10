@@ -3,7 +3,8 @@
     <!-- 1. Pending Replenishment Applications -->
     <section class="card approval__pending">
       <h2 class="section-title">Pending Replenishment Applications</h2>
-      <div class="approval__table">
+      <div v-if="loading && !applications.length" class="empty-hint">Loading...</div>
+      <div v-else class="approval__table">
         <div class="approval__table-header">
           <span class="col col-wide">Application</span>
           <span class="col">Warehouse</span>
@@ -29,7 +30,7 @@
             </span>
           </span>
         </div>
-        <p v-if="!applications.length" class="empty-hint">No pending applications</p>
+        <p v-if="!loading && !applications.length" class="empty-hint">No pending applications</p>
       </div>
     </section>
 
@@ -69,7 +70,8 @@
     <!-- 3. Recent Allocations -->
     <section class="card approval__allocations">
       <h2 class="section-title">Recent Allocations</h2>
-      <div class="approval__table">
+      <div v-if="loading && !recentAllocations.length" class="empty-hint">Loading...</div>
+      <div v-else class="approval__table">
         <div class="approval__table-header">
           <span class="col col-wide">Transfer ID</span>
           <span class="col">From → To</span>
@@ -100,7 +102,7 @@
             </span>
           </span>
         </div>
-        <p v-if="!recentAllocations.length" class="empty-hint">No recent allocations</p>
+        <p v-if="!loading && !recentAllocations.length" class="empty-hint">No recent allocations</p>
       </div>
     </section>
 
@@ -316,13 +318,24 @@ const loadApplications = async () => {
   }
   
   try {
+    console.log('[loadApplications] Starting to fetch applications...');
+    console.log('[loadApplications] Calling fetchReplenishmentApplications()...');
     const allApplications = await fetchReplenishmentApplications();
+    console.log('[loadApplications] API response received:', {
+      type: typeof allApplications,
+      isArray: Array.isArray(allApplications),
+      length: Array.isArray(allApplications) ? allApplications.length : 'N/A',
+      data: allApplications
+    });
     
     // 确保 allApplications 是数组
     if (!Array.isArray(allApplications)) {
-      console.warn('fetchReplenishmentApplications returned non-array:', allApplications);
-      applications.value = [];
-      selectedApplication.value = null;
+      console.error('[loadApplications] ERROR: fetchReplenishmentApplications returned non-array:', allApplications);
+      // 不要清空现有数据，保留之前的数据
+      if (!applications.value || applications.value.length === 0) {
+        applications.value = [];
+        selectedApplication.value = null;
+      }
       loading.value = false;
       return;
     }
@@ -339,71 +352,98 @@ const loadApplications = async () => {
     
     // 待审批的申请：PENDING 和 PROCESSING 状态
     const pendingStatuses = ['PENDING', 'PROCESSING'];
-    applications.value = uniqueApplications.filter((item) => pendingStatuses.includes(item.status));
+    const pendingApps = uniqueApplications.filter((item) => pendingStatuses.includes(item.status));
+    console.log('[loadApplications] Filtered pending applications:', pendingApps.length);
+    
+    // 始终更新 applications，即使为空数组也要更新
+    applications.value = pendingApps;
 
+    // 更新选中的申请，确保状态同步
     if (!selectedApplication.value) {
-      selectedApplication.value = applications.value[0] || null;
+      // 如果之前没有选中的申请，选择第一个
+      const firstApp = applications.value[0] || null;
+      if (firstApp) {
+        selectApplication(firstApp);
+      } else {
+        selectedApplication.value = null;
+      }
+      console.log('[loadApplications] Selected first application:', selectedApplication.value?.requestId || 'none');
     } else {
+      // 如果之前有选中的申请，尝试刷新它，或者选择第一个
       const refreshed =
         uniqueApplications.find((item) => item.requestId === selectedApplication.value.requestId) || null;
-      selectedApplication.value = refreshed || applications.value[0] || null;
+      const appToSelect = refreshed || applications.value[0] || null;
+      if (appToSelect) {
+        selectApplication(appToSelect);
+      } else {
+        selectedApplication.value = null;
+        allocationFormVisible.value = false;
+      }
+      console.log('[loadApplications] Refreshed selected application:', selectedApplication.value?.requestId || 'none');
     }
 
-    // 如果选中的申请状态是 APPROVED，显示分配表单
-    const shouldShowForm = selectedApplication.value?.status === 'APPROVED';
-    
-    // 只有在表单状态发生变化时（从隐藏变为显示）才恢复/填充数据
-    // 如果表单已经在显示，说明用户可能正在填写，不要覆盖
-    if (shouldShowForm && selectedApplication.value) {
-      if (!allocationFormVisible.value) {
-        // 表单从隐藏变为显示，尝试恢复或填充数据
-        allocationFormVisible.value = true;
-        const requestId = selectedApplication.value.requestId;
-        const hasSavedData = loadTransferFormFromStorage(requestId);
-        
-        // 如果没有保存的数据，才自动填充默认值
-        if (!hasSavedData) {
-          transfer.from = 'Central Warehouse';
-          transfer.to = selectedApplication.value.warehouseName || '';
-          transfer.sku = selectedApplication.value.productId || '';
-          transfer.quantity = selectedApplication.value.quantity || 0;
-          transfer.reason = selectedApplication.value.reason || '';
-        }
-      }
-      // 如果表单已经在显示，保持当前状态，不覆盖用户输入
-    } else {
+    // 注意：selectApplication 已经处理了表单显示和数据恢复逻辑
+    // 这里不需要再次处理，避免重复逻辑
+  } catch (error) {
+    console.error('[loadApplications] ERROR: Failed to load applications:', error);
+    console.error('[loadApplications] Error details:', {
+      message: error.message,
+      stack: error.stack,
+      response: error.response?.data
+    });
+    // 在错误情况下，如果数据已经存在，不要清空它
+    // 只有在数据为空时才设置为空数组
+    if (!applications.value || applications.value.length === 0) {
+      applications.value = [];
+      selectedApplication.value = null;
       allocationFormVisible.value = false;
     }
-  } catch (error) {
-    console.error('Failed to load applications:', error);
-    // 确保在错误情况下也设置默认值
-    applications.value = [];
-    selectedApplication.value = null;
-    allocationFormVisible.value = false;
   } finally {
     loading.value = false;
+    console.log('[loadApplications] Completed. Applications count:', applications.value.length);
   }
 };
 
 const loadRecentAllocations = async () => {
   try {
+    console.log('[loadRecentAllocations] Starting to fetch data...');
     // 加载所有补货申请（已批准或已创建调拨单的）
+    console.log('[loadRecentAllocations] Calling fetchReplenishmentApplications()...');
     const allApplications = await fetchReplenishmentApplications();
+    console.log('[loadRecentAllocations] API response (applications):', {
+      type: typeof allApplications,
+      isArray: Array.isArray(allApplications),
+      length: Array.isArray(allApplications) ? allApplications.length : 'N/A',
+      data: allApplications
+    });
     
     // 确保 allApplications 是数组
     if (!Array.isArray(allApplications)) {
-      console.warn('fetchReplenishmentApplications returned non-array in loadRecentAllocations:', allApplications);
-      recentAllocations.value = [];
+      console.error('[loadRecentAllocations] ERROR: fetchReplenishmentApplications returned non-array:', allApplications);
+      // 不要清空现有数据，保留之前的数据
+      if (!recentAllocations.value || recentAllocations.value.length === 0) {
+        recentAllocations.value = [];
+      }
       return;
     }
     
     // 加载所有调拨单（不指定locationId以获取所有调拨单）
+    console.log('[loadRecentAllocations] Calling fetchTransfers()...');
     const transfers = await fetchTransfers();
+    console.log('[loadRecentAllocations] API response (transfers):', {
+      type: typeof transfers,
+      isArray: Array.isArray(transfers),
+      length: Array.isArray(transfers) ? transfers.length : 'N/A',
+      data: transfers
+    });
     
     // 确保 transfers 是数组
     if (!Array.isArray(transfers)) {
-      console.warn('fetchTransfers returned non-array:', transfers);
-      recentAllocations.value = [];
+      console.error('[loadRecentAllocations] ERROR: fetchTransfers returned non-array:', transfers);
+      // 不要清空现有数据，保留之前的数据
+      if (!recentAllocations.value || recentAllocations.value.length === 0) {
+        recentAllocations.value = [];
+      }
       return;
     }
     
@@ -482,13 +522,27 @@ const loadRecentAllocations = async () => {
     });
     
     // 按创建时间倒序排列
-    recentAllocations.value = allocations
+    const sortedAllocations = allocations
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 20);
+    
+    console.log('[loadRecentAllocations] Processed allocations:', sortedAllocations.length);
+    // 始终更新 recentAllocations，即使为空数组也要更新
+    recentAllocations.value = sortedAllocations;
   } catch (error) {
-    console.error('Failed to load recent allocations:', error);
-    // 确保在错误情况下也设置默认值
-    recentAllocations.value = [];
+    console.error('[loadRecentAllocations] ERROR: Failed to load recent allocations:', error);
+    console.error('[loadRecentAllocations] Error details:', {
+      message: error.message,
+      stack: error.stack,
+      response: error.response?.data
+    });
+    // 在错误情况下，如果数据已经存在，不要清空它
+    // 只有在数据为空时才设置为空数组
+    if (!recentAllocations.value || recentAllocations.value.length === 0) {
+      recentAllocations.value = [];
+    }
+  } finally {
+    console.log('[loadRecentAllocations] Completed. Allocations count:', recentAllocations.value.length);
   }
 };
 
@@ -644,32 +698,40 @@ const handleVisibilityChange = () => {
 
 // 数据加载函数，可重复调用
 const loadAllData = async () => {
+  console.log('[loadAllData] Starting to load all data...');
   // 确保数据加载，即使失败也要设置默认值
   try {
     await Promise.all([
       loadApplications(),
       loadRecentAllocations()
     ]);
+    console.log('[loadAllData] All data loaded successfully');
   } catch (error) {
-    console.error('Failed to load data:', error);
+    console.error('[loadAllData] ERROR: Failed to load data:', error);
     // 确保即使加载失败也显示空状态
+    // 但不要覆盖已经存在的数据
     if (!applications.value) applications.value = [];
     if (!recentAllocations.value) recentAllocations.value = [];
   }
 };
 
 onMounted(async () => {
+  console.log('[onMounted] Component mounted, initializing...');
   // 添加页面可见性监听
   document.addEventListener('visibilitychange', handleVisibilityChange);
   
   // 初始加载数据
+  console.log('[onMounted] Loading initial data...');
   await loadAllData();
+  console.log('[onMounted] Initial data loaded');
   
   // 定期刷新申请列表和调拨单列表
   refreshIntervalId.value = setInterval(() => {
+    console.log('[refreshInterval] Refreshing data...');
     loadApplications();
     loadRecentAllocations();
   }, 5000); // 每5秒刷新一次
+  console.log('[onMounted] Auto-refresh interval set');
 });
 
 // 监听路由变化，确保切换回来时重新加载

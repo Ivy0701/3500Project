@@ -1,87 +1,172 @@
-**分布式库存与销售管理系统开发文档**
-该软件的核心功能有
+# Distributed Inventory and Sales Management System Project Proposal
 
-1. **库存信息录入**
-   - 仓库管理员录入商品信息（ID、名称、规格、数量、仓库位置）
-   - 系统校验信息完整性，支持图片上传
-   - 成功录入后更新库存记录
+## Core Functional Modules
 
-2. **销售订单生成**
-   - 销售人员创建销售订单，输入客户和商品信息
-   - 系统自动检查库存余量
-   - 库存充足时生成订单，分配唯一订单号
+### 1. User Authentication and Permission Management
 
-3. **库存余量查询**
-   - 支持按商品ID或名称模糊查询
-   - 可查看总库存和各仓库分布情况
-   - 显示库存预警状态，支持数据导出
+- **Multi-role Permission System**: Supports four roles: Central Warehouse Manager, Regional Warehouse Manager, Store Sales Staff, and Customer
+- **User Registration and Login**: Secure user authentication mechanism with password reset support
+- **Role-Based Access Control (RBAC)**: Different roles access different functional modules and data scopes
+- **Permission Isolation**: Ensures users can only access and operate data within their permission scope
 
-4. **自动库存更新**
-   - 订单确认后自动扣减库存
-   - 库存低于安全阈值时自动生成补货提醒
-   - 实时同步库存状态
+### 2. Multi-Level Inventory Management
 
-5. **补货申请处理**
-   - 仓库管理员处理系统补货提醒或手动发起申请
-   - 补货信息同步至采购模块
-   - 采购完成后自动更新库存
+- **Three-Level Inventory Architecture**: Central Warehouse → Regional Warehouse → Store, supporting hierarchical inventory query and management
+- **Real-Time Inventory Query**: Supports multi-dimensional queries by product ID, name, warehouse location, etc.
+- **Inventory Statistics and Display**: Real-time display of total stock, available stock, allocated stock, etc.
+- **Inventory Alert Mechanism**: Automatically generates replenishment reminders when inventory falls below safety threshold
+- **Inventory History**: Records inventory change history, supports tracing and analysis
 
-6. **销售订单取消**
-   - 销售人员取消未发货订单
-   - 系统自动恢复扣减的库存
-   - 向客户发送取消通知
+### 3. Order Management
 
-7. **库存报表生成**
-   - 运营管理员生成各类库存报表
-   - 支持时间范围和仓库范围筛选
-   - 提供图表展示和数据导出功能
+- **Customer Shopping Flow**: Customers can browse products, add to cart, and place orders
+- **Order Generation**: System automatically validates inventory and generates orders with unique order numbers
+- **Order Status Tracking**: Order statuses include Pending Payment, Pending Shipment, In Transit, Delivered, Completed, Cancelled
+- **Order Processing**: Sales staff can view and process orders, update order status
+- **After-Sales Management**: Supports return and exchange application and processing
 
-8. **权限管理**
-   - 系统管理员分配员工操作权限
-   - 支持按功能模块设置权限范围
-  - 权限变更在下次登录时生效
+### 4. Replenishment and Transfer Management
 
-## 关键页面与主要元素
+- **Replenishment Application**: Regional warehouse managers can initiate replenishment applications based on inventory alerts or manually
+- **Replenishment Approval Process**: Central warehouse managers approve replenishment applications
+- **Transfer Order Management**: After approval, create transfer orders supporting transfers from central warehouse or other regional warehouses
+- **Receiving Confirmation**: Regional warehouse managers can confirm receipt, system automatically updates inventory
+- **Transfer Tracking**: Real-time tracking of transfer order status (Pending Approval, In Transit, Arrived)
+- **Automatic Inventory Update**: Inventory is deducted from source warehouse when transfer order is created, and added to target warehouse after receiving confirmation
 
-1. **登录与用户首页**
-   - 登录表单：账号、密码、验证码（可选）
-   - 登录入口旁提供“忘记密码”“联系客服”链接
-   - 成功登录后进入个性化首页，展示常用功能入口、今日任务、库存预警概览
+### 5. Data Analysis and Reporting
 
-2. **库存管理页面**
-   - 顶部筛选区：商品ID、名称、仓库、分类、库存状态筛选器
-   - 数据表格：商品基础信息、各仓库库存、可用库存、预警状态
-   - 侧边栏：快速操作（新增商品、导入/导出、批量调整库存）
-   - 详情抽屉：查看商品历史记录、图片、规格与补货记录
+- **Inventory Statistics Reports**: Generate inventory reports by time range, warehouse, product category, etc.
+- **Order Data Analysis**: Order volume, sales revenue, popular products, etc.
+- **Multi-Dimensional Filtering**: Supports multiple filter conditions including time, warehouse, product, status
+- **Data Visualization**: Charts displaying key indicators and trend analysis
 
-3. **销售订单页面**
-   - 新建订单向导：客户信息、商品选择、数量、折扣与备注
-   - 库存校验提示：实时显示库存余量、库存不足时的推荐补货操作
-   - 订单列表：状态标签、发货进度、付款状态
-   - 订单详情：流程时间轴、审批记录、物流信息、操作按钮（确认、取消、打印）
+### 6. Supplier Management (Central Warehouse)
 
-4. **补货申请页面**
-   - 补货提醒列表：触发来源、商品信息、建议补货数
-   - 补货申请表单：供应商、预计到货时间、审批流程
-   - 处理进度跟踪：审批状态、采购联动状态、收货确认入口
+- **Supplier Information Management**: Maintain supplier basic information, contact details, cooperation level
+- **Supplier Follow-up Tasks**: Generate supplier follow-up tasks based on replenishment applications
+- **Supplier Interaction Records**: Record interaction history and important events with suppliers
 
-5. **库存报表页面**
-   - 过滤条件：时间范围、仓库、商品分类、业务类型
-   - 报表卡片：关键指标（库存周转率、安全库存达标率、销售额）
-   - 图表组件：折线图、柱状图、饼图，支持切换维度
-   - 导出与分享：导出Excel/PDF、生成分享链接、定时推送设置
+## Key Pages and Functional Design
 
-6. **权限管理页面**
-   - 用户列表：姓名、角色、状态、最近登录时间
-   - 权限矩阵：功能模块与操作权限的可视化矩阵，可批量授权
-   - 角色管理：角色创建、复制、权限配置、关联用户
-   - 操作日志：记录权限变更、审批流程
+### 1. Login and Dashboard
 
-## 设计风格与视觉规范
+- **Login Page**: Clean login form supporting account and password login, provides forgot password link
+- **Role Selection Page**: Select login role type on first visit
+- **Dashboard**:
+  - Central Warehouse Manager: Displays pending replenishment applications, supplier follow-up tasks, key indicators overview
+  - Regional Warehouse Manager: Displays inventory alerts, pending replenishment applications, regional order overview
+  - Store Sales Staff: Displays pending orders, inventory reminders, today's tasks
+  - Customer: Displays recommended products, order status, shopping cart
 
-- **整体风格**：现代企业级风格，强调清晰层次与信息密度；布局采用栅格系统，保持模块化与一致性。
-- **背景色彩**：主体背景使用浅灰或低饱和色（如 `#F5F6FA`），内容卡片使用白色（`#FFFFFF`）突出。顶部导航采用深色渐变（如 `#1F2933` 至 `#27303F`）增强对比，关键按钮使用品牌主色（推荐蓝绿色系 `#2BB5C0`）。
-- **字体与排版**：正文使用无衬线字体（如思源黑体或苹方），字号14px-16px，标题加粗。表格与数据展示使用对齐网格，重要指标使用半粗字体。
-- **图标与视觉元素**：使用线性图标配合轻量阴影，状态指示使用统一色板（成功 `#30C48D`、警告 `#F5A623`、错误 `#F25056`）。关键数据卡片支持渐进式动画，以增强实时感。
-- **交互反馈**：操作按钮悬停提供颜色与阴影反馈，表格行支持悬停高亮；重要操作需二次确认弹窗，并在页面顶部提供全局消息提醒。
+### 2. Inventory Management Page
 
+- **Inventory List Display**: Table format displaying all inventory information, supports pagination and search
+- **Multi-Dimensional Filtering**: Filter by product ID, name, warehouse location, inventory status, etc.
+- **Inventory Details**: Click to view detailed inventory information and history of individual products
+- **Inventory Statistics**: Display total inventory, available inventory, alert product count, etc.
+- **Permission Control**: Different roles can only view warehouse inventory within their permission scope
+
+### 3. Order Management Page
+
+- **Order List**: Display all orders, supports filtering by status, time, customer, etc.
+- **Create Order**: Sales staff can manually create orders, system automatically validates inventory
+- **Order Details**: View complete order information, logistics status, operation history
+- **Order Operations**: Confirm order, ship, cancel order, etc.
+- **Inventory Validation**: Real-time display of available inventory when creating orders, alerts when inventory is insufficient
+
+### 4. Replenishment Application and Approval Page
+
+**Regional Warehouse End (Replenishment Application)**:
+- **Inventory Alert List**: Automatically generated replenishment reminders showing trigger reasons and recommended replenishment quantities
+- **Replenishment Application Form**: Fill in replenishment products, quantities, expected arrival time, etc.
+- **Application Progress Tracking**: Real-time view of application approval status and processing progress
+
+**Central Warehouse End (Replenishment Approval)**:
+- **Pending Application List**: Display all pending replenishment applications
+- **Application Details View**: View application details, trigger reasons, regional warehouse inventory status
+- **Approval Operations**: Approve or reject applications, fill in approval comments
+- **Commodity Allocation**: After approval, create transfer orders, select source and target warehouses
+
+### 5. Receiving Management Page
+
+- **Receiving Plan List**: Display all pending receiving transfer orders
+- **Receiving Confirmation**: Confirm receiving quantity, quality level, update receiving status
+- **Receiving History**: View historical receiving records
+
+### 6. Reports and Statistics Page
+
+- **Inventory Reports**: Inventory turnover rate, safety stock compliance rate, inventory distribution, etc.
+- **Order Reports**: Order volume trends, sales revenue statistics, customer analysis, etc.
+- **Data Filtering**: Supports multi-dimensional filtering by time range, warehouse, product category, etc.
+- **Data Export**: Supports exporting reports in Excel format
+
+## Technical Implementation
+
+### Frontend Technology Stack
+
+- **Vue 3**: Build reactive user interfaces using Composition API
+- **Vite**: Fast frontend build tool supporting Hot Module Replacement
+- **Vue Router**: Implement single-page application routing
+- **Pinia**: State management for global states like user login status, shopping cart
+- **Axios**: HTTP client for communicating with backend API
+- **SCSS**: CSS preprocessor for better style organization
+
+### Backend Technology Stack
+
+- **Node.js + Express**: Build RESTful API server
+- **MongoDB + Mongoose**: NoSQL database storage, use Mongoose for data modeling
+- **JWT**: JSON Web Token for user authentication and authorization
+- **bcryptjs**: Password encryption storage to ensure user password security
+
+### Database Design
+
+- **User Table**: Stores user information, roles, permission scopes
+- **Inventory Table**: Stores product inventory information including location, quantity, threshold, etc.
+- **Order Table**: Stores order information, status, customer information, etc.
+- **ReplenishmentRequest Table**: Stores replenishment application information, approval status
+- **TransferOrder Table**: Stores transfer order information, status, logistics information
+- **ReceivingSchedule Table**: Stores receiving plan information
+
+## Design Style and Visual Standards
+
+- **Overall Style**: Modern enterprise-level style emphasizing clear information hierarchy and good user experience
+- **Color Scheme**:
+  - Primary Color: Teal `#2BB5C0` for main action buttons and brand identity
+  - Background Color: Light Gray `#F5F6FA` for comfortable visual experience
+  - Navigation Bar: Dark gradient from `#1F2933` to `#27303F`
+  - Success Status: Green `#30C48D`
+  - Warning Status: Orange `#F5A623`
+  - Error Status: Red `#F25056`
+- **Layout Design**: Responsive grid system adapting to different screen sizes
+- **Interaction Design**: Key operations provide clear feedback, important operations require confirmation
+
+## Project Implementation Plan
+
+### Phase 1: Requirements Analysis and Design (Completed)
+- User requirements research and analysis
+- System architecture design
+- Database design
+- UI/UX design
+
+### Phase 2: Core Function Development (Completed)
+- User authentication and permission management
+- Inventory management module
+- Order management module
+- Replenishment and transfer module
+
+### Phase 3: Function Enhancement and Optimization (Completed)
+- Reports and analysis functions
+- Supplier management
+- User experience optimization
+- Error handling and exception handling
+
+### Phase 4: Testing and Deployment (Completed)
+- Functional testing
+- Integration testing
+- User experience testing
+- Deployment preparation
+
+## Project Outcomes
+
+This project has successfully implemented all core functions, and the system is fully operational and ready for use. The project demonstrates a complete software engineering process, including requirements analysis, system design, coding implementation, testing and verification, and other stages of work results.

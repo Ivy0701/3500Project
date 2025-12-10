@@ -75,15 +75,15 @@ export const completeReceiving = async (req, res, next) => {
       
       // 在确认收货时，只增加目标仓库的库存
       // 来源仓库的库存已在创建调拨单时减少
-      console.log(`[Receiving] Increasing inventory at destination: ${storageLocationId}, product: ${schedule.productSku}, quantity: +${received}`);
-      await adjustInventory({
-        locationId: storageLocationId,
-        locationName: storageLocationId,
-        productSku: schedule.productSku,
-        productName: schedule.productName,
-        delta: received,
-        session
-      });
+        console.log(`[Receiving] Increasing inventory at destination: ${storageLocationId}, product: ${schedule.productSku}, quantity: +${received}`);
+        await adjustInventory({
+          locationId: storageLocationId,
+          locationName: storageLocationId,
+          productSku: schedule.productSku,
+          productName: schedule.productName,
+          delta: received,
+          session
+        });
 
       schedule.status = 'ARRIVED';
       schedule.storageLocationId = storageLocationId;

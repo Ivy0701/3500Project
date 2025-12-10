@@ -658,9 +658,9 @@ const submitOrder = async () => {
       try {
         const inventoryList = await getInventoryByLocation(storeId);
         allStoreInventories[storeId] = {};
-        inventoryList.forEach(item => {
+    inventoryList.forEach(item => {
           allStoreInventories[storeId][item.productId] = item;
-        });
+    });
       } catch (storeError) {
         console.warn(`Failed to get inventory for store ${storeId}:`, storeError);
         // 继续检查其他门店
