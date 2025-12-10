@@ -17,9 +17,7 @@ c) Software implementation
 d) Software validation/testing
 e) Software evolution
 
-## Project Name
-
-**Distributed Inventory and Sales Management System**
+## **Distributed Inventory and Sales Management System**
 
 A full-stack inventory and sales management web application system built with Vue 3 + Node.js + MongoDB.
 
