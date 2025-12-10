@@ -143,8 +143,12 @@ Open your browser and visit: `http://localhost:5173`
 
 ```env
 PORT=4000
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority
-# Or local MongoDB
+
+# MongoDB Connection URI
+# For MongoDB Atlas (Cloud Database):
+MONGODB_URI=mongodb+srv://comp_user:789456123@cluster0.oqtm8xy.mongodb.net/?appName=Cluster0
+
+# Or for local MongoDB:
 # MONGODB_URI=mongodb://localhost:27017/inventory_sales
 
 JWT_SECRET=your-secret-key-here
@@ -189,6 +193,15 @@ If you encounter network connection issues, please refer to: [API Configuration 
 This project is created as part of the Software Engineering course (COMP3500SEF) at Hong Kong Metropolitan University. All rights and usage are governed by the university's academic policies.
 
 This project is for learning and demonstration purposes. Please ensure thorough security review and testing before using in production.
+
+## 📚 Documentation
+
+Detailed documentation can be found in the project directory:
+
+- API Reference - View backend API interface documentation
+- Deployment Guide - Learn how to deploy to production
+- Troubleshooting - Common issues and solutions
+- User Manual - System usage instructions
 
 ---
 
