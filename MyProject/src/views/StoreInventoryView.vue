@@ -99,73 +99,61 @@ const stores = ref([]);
 const productMetadata = {
   'PROD-001': {
     name: 'Casual T-Shirt',
-    spec: 'S/M/L/XL',
+    spec: 'One Size',
     threshold: 80,
     store: 'Store A - Downtown',
     location: 'Area A-03-05',
     lastInDate: '2024-01-12',
-    colors: ['Black', 'White', 'Blue', 'Red', 'Gray'],
-    sizes: ['S', 'M', 'L', 'XL'],
     price: 29.99,
     icon: '👕'
   },
   'PROD-002': {
     name: 'Classic Denim Jeans',
-    spec: '28/30/32/34/36',
+    spec: 'One Size',
     threshold: 50,
     store: 'Store B - Shopping Mall',
     location: 'Area B-01-02',
     lastInDate: '2024-01-09',
-    colors: ['Blue', 'Black', 'Gray'],
-    sizes: ['28', '30', '32', '34', '36'],
     price: 59.99,
     icon: '👖'
   },
   'PROD-003': {
     name: 'Hooded Sweatshirt',
-    spec: 'S/M/L/XL/XXL',
+    spec: 'One Size',
     threshold: 50,
     store: 'Store A - Downtown',
     location: 'Area A-02-03',
     lastInDate: '2024-01-10',
-    colors: ['Black', 'Gray', 'Navy', 'Red'],
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
     price: 49.99,
     icon: '🧥'
   },
   'PROD-004': {
     name: 'Chino Pants',
-    spec: '30/32/34/36/38',
+    spec: 'One Size',
     threshold: 40,
     store: 'Store C - Airport',
     location: 'Area C-02-01',
     lastInDate: '2024-01-11',
-    colors: ['Khaki', 'Navy', 'Black', 'Olive'],
-    sizes: ['30', '32', '34', '36', '38'],
     price: 54.99,
     icon: '👔'
   },
   'PROD-005': {
     name: 'Polo Shirt',
-    spec: 'S/M/L/XL',
+    spec: 'One Size',
     threshold: 60,
     store: 'Store B - Shopping Mall',
     location: 'Area B-01-04',
     lastInDate: '2024-01-13',
-    colors: ['White', 'Black', 'Navy', 'Green', 'Red'],
-    sizes: ['S', 'M', 'L', 'XL'],
     price: 39.99,
     icon: '👔'
   },
   'PROD-006': {
     name: 'Jogger Pants',
-    spec: 'S/M/L/XL',
+    spec: 'One Size',
     threshold: 25,
     store: 'Store A - Downtown',
     location: 'Area A-04-01',
     lastInDate: '2024-01-05',
-    colors: ['Black', 'Gray', 'Navy', 'Olive'],
-    sizes: ['S', 'M', 'L', 'XL'],
     price: 44.99,
     icon: '👖'
   }
@@ -240,8 +228,6 @@ const loadInventory = async () => {
           location: item.locationId,
           lastInDate: metadata.lastInDate,
           restockAdvice: getRestockAdvice(item.available, metadata.threshold),
-          colors: metadata.colors,
-          sizes: metadata.sizes,
           price: metadata.price,
           icon: metadata.icon
         });

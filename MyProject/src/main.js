@@ -6,7 +6,6 @@ import App from './App.vue';
 import router from './router';
 import './styles/theme.scss';
 import { useAppStore } from './store/appStore';
-import zh from './locales/zh';
 import en from './locales/en';
 
 const app = createApp(App);
@@ -19,7 +18,6 @@ const i18n = createI18n({
   locale: 'en',
   fallbackLocale: 'en',
   messages: {
-    zh,
     en
   }
 });

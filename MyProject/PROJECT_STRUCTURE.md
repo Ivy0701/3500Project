@@ -95,11 +95,17 @@ This document provides a detailed explanation of the project structure for the D
 │   │   │   │   └── db.js
 │   │   │   └── scripts/       # Database scripts
 │   │   │       ├── initDefaultUsers.js
+│   │   │       ├── initUsers.js
+│   │   │       ├── initCentralInventory.js
 │   │   │       ├── initRegionalInventories.js
+│   │   │       ├── initEastRegionInventory.js
 │   │   │       ├── initOperationalData.js
+│   │   │       ├── seedInventoryQuantity.js
 │   │   │       ├── checkReplenishmentData.js
 │   │   │       ├── checkWarehouseInventory.js
-│   │   │       └── ... (more scripts)
+│   │   │       ├── checkAndFixStoreInventory.js
+│   │   │       ├── fixInventoryIndexes.js
+│   │   │       └── updateUserNames.js
 │   │   ├── PRESET_ACCOUNTS.md # Preset accounts documentation
 │   │   └── package.json
 │   ├── API_CONFIG.md          # API configuration guide
