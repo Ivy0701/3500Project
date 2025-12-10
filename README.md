@@ -178,26 +178,17 @@ The system supports the following user roles:
 - **Sales Staff (sales)**: Processes orders, manages store inventory
 - **Customer (customer)**: Browses products, places orders, views order status
 
-For detailed account information, please refer to `MyProject/server/PRESET_ACCOUNTS.md`
+For detailed account information, please refer to: [Preset Accounts Documentation](MyProject/server/PRESET_ACCOUNTS.md)
 
 ## API Configuration
 
-If you encounter network connection issues, please refer to `MyProject/API_CONFIG.md` for configuration.
+If you encounter network connection issues, please refer to: [API Configuration Guide](MyProject/API_CONFIG.md) for configuration.
 
 ## 📄 License
 
 This project is created as part of the Software Engineering course (COMP3500SEF) at Hong Kong Metropolitan University. All rights and usage are governed by the university's academic policies.
 
 This project is for learning and demonstration purposes. Please ensure thorough security review and testing before using in production.
-
-## 📚 Documentation
-
-Detailed documentation can be found in the project directory:
-
-- API Reference - View backend API interface documentation
-- Deployment Guide - Learn how to deploy to production
-- Troubleshooting - Common issues and solutions
-- User Manual - System usage instructions
 
 ---
 
