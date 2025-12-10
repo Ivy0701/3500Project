@@ -6,7 +6,7 @@ import connectDb from '../config/db.js';
 
 dotenv.config();
 
-// 预设账号配置（与 initDefaultUsers 保持一致，方便单独脚本执行初始化）
+// Default user configuration (consistent with initDefaultUsers, for easy standalone script execution)
 const ALL_STORE_IDS = [
   'STORE-EAST-01',
   'STORE-EAST-02',
@@ -21,7 +21,7 @@ const ALL_STORE_IDS = [
 const ALL_WAREHOUSE_IDS = ['WH-CENTRAL', 'WH-EAST', 'WH-WEST', 'WH-NORTH', 'WH-SOUTH'];
 
 const defaultUsers = [
-  // 总仓库管理
+  // Central warehouse manager
   {
     account: 'central001',
     password: '123456',
@@ -40,7 +40,7 @@ const defaultUsers = [
     region: 'ALL',
     accessibleLocationIds: [...ALL_WAREHOUSE_IDS, ...ALL_STORE_IDS]
   },
-  // 区域仓库管理员（8 个）
+  // Regional warehouse manager (8)
   {
     account: 'east_manager_01',
     password: '123456',
@@ -113,7 +113,7 @@ const defaultUsers = [
     region: 'SOUTH',
     accessibleLocationIds: ['WH-SOUTH', 'STORE-SOUTH-01', 'STORE-SOUTH-02']
   },
-  // 销售员 8 个（4 家门店，每店 2 人）
+  // Sales staff (8 in total, 2 sales staff per store, 4 stores: East/West/North/South Store 1)
   {
     account: 'east_store1_sales_01',
     password: '123456',
@@ -262,27 +262,27 @@ const defaultUsers = [
 
 const initUsers = async () => {
   try {
-    console.log('🔄 开始初始化预设账号...');
+    console.log('🔄 Starting to initialize default users...');
     
-    // 连接数据库
+    // Connect to database
     await connectDb();
     
-    // 创建每个预设账号
+    // Create each default user
     for (const userData of defaultUsers) {
       const { account, password, name, role, assignedLocationId, region, accessibleLocationIds } = userData;
       
-      // 检查账号是否已存在
+      // Check if the account already exists
       const existingUser = await User.findOne({ account });
       
       if (existingUser) {
-        console.log(`⏭️  账号 ${account} 已存在，跳过创建`);
+        console.log(`⏭️  Account ${account} already exists, skipping creation`);
         continue;
       }
       
-      // 加密密码
+      // Encrypt password
       const passwordHash = await bcrypt.hash(password, 10);
       
-      // 创建用户
+      // Create user
       const user = await User.create({
         account,
         passwordHash,
@@ -293,32 +293,32 @@ const initUsers = async () => {
         accessibleLocationIds
       });
       
-      console.log(`✅ 成功创建账号: ${account} (${name}) - 角色: ${role}`);
+      console.log(`✅ Successfully created account: ${account} (${name}) - Role: ${role}`);
     }
     
-    console.log('✨ 预设账号初始化完成！');
-    console.log('\n📋 预设账号列表：');
-    console.log('销售员账号：');
-    console.log('  账号: sales001, 密码: 123456');
-    console.log('  账号: sales002, 密码: 123456');
-    console.log('\n区域仓库管理员账号：');
-    console.log('  账号: regional001, 密码: 123456');
-    console.log('  账号: regional002, 密码: 123456');
-    console.log('\n总仓库管理员账号：');
-    console.log('  账号: central001, 密码: 123456');
-    console.log('  账号: central002, 密码: 123456');
+    console.log('✨ Default users initialization completed!');
+    console.log('\n📋 Default users list:');
+    console.log('Sales staff accounts:');
+    console.log('  Account: sales001, Password: 123456');
+    console.log('  Account: sales002, Password: 123456');
+    console.log('\nRegional warehouse manager accounts:');
+    console.log('  Account: regional001, Password: 123456');
+    console.log('  Account: regional002, Password: 123456');
+    console.log('\nCentral warehouse manager accounts:');
+    console.log('  Account: central001, Password: 123456');
+    console.log('  Account: central002, Password: 123456');
     
-    // 关闭数据库连接
+    // Close database connection
     await mongoose.connection.close();
     process.exit(0);
   } catch (error) {
-    console.error('❌ 初始化失败:', error);
+    console.error('❌ Initialization failed:', error);
     await mongoose.connection.close();
     process.exit(1);
   }
 };
 
-// 运行初始化
+// Run initialization
 initUsers();
 
 

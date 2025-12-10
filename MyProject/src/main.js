@@ -14,7 +14,6 @@ const pinia = createPinia();
 
 app.use(pinia);
 
-// 轻量级国际化配置：只在前端应用内生效
 const i18n = createI18n({
   legacy: false,
   locale: 'en',

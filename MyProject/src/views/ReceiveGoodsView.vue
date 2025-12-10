@@ -124,7 +124,7 @@ const statusLabelMap = {
 
 const statusClassMap = {
   PENDING: 'warning',
-  IN_TRANSIT: 'warning', // 改为黄色
+  IN_TRANSIT: 'warning',
   ARRIVED: 'success'
 };
 

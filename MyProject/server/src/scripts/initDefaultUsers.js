@@ -1,8 +1,8 @@
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 
-// 预设账号配置（用于演示的多角色 + 库存权限）
-// 对应示例中的 users 集合：中央管理、区域管理、门店销售等
+// Default user configuration (for demonstration of multiple roles + inventory permissions)
+// Corresponding to the users collection in the example: central management, regional management, store sales, etc.
 
 const ALL_STORE_IDS = [
   'STORE-EAST-01',
@@ -18,7 +18,7 @@ const ALL_STORE_IDS = [
 const ALL_WAREHOUSE_IDS = ['WH-CENTRAL', 'WH-EAST', 'WH-WEST', 'WH-NORTH', 'WH-SOUTH'];
 
 const defaultUsers = [
-  // 总仓库管理（可以查看/操作所有位置）
+  // Central warehouse manager (can view/operate all locations)
   {
     account: 'central001',
     password: '123456',
@@ -37,7 +37,7 @@ const defaultUsers = [
     region: 'ALL',
     accessibleLocationIds: [...ALL_WAREHOUSE_IDS, ...ALL_STORE_IDS]
   },
-  // 区域仓库管理员（示例共 8 个）
+  // Regional warehouse manager (example of 8)
   {
     account: 'east_manager_01',
     password: '123456',
@@ -110,7 +110,7 @@ const defaultUsers = [
     region: 'SOUTH',
     accessibleLocationIds: ['WH-SOUTH', 'STORE-SOUTH-01', 'STORE-SOUTH-02']
   },
-  // 销售员（共 8 个，每个门店 2 个销售员，4 家门店：East/West/North/South Store 1）
+  // Sales staff (8 in total, 2 sales staff per store, 4 stores: East/West/North/South Store 1)
   {
     account: 'east_store1_sales_01',
     password: '123456',
@@ -261,24 +261,24 @@ const defaultUsers = [
   }
 ];
 
-// 自动初始化预设账号（静默运行，不退出进程）
+// Automatically initialize default users (silent run, no exit process)
 export const initDefaultUsers = async () => {
   try {
-    // 创建每个预设账号（如果不存在）
+    // Create each default user (if not exists)
     for (const userData of defaultUsers) {
       const { account, password, name, role, assignedLocationId, region, accessibleLocationIds } = userData;
       
-      // 检查账号是否已存在
+      // Check if the account already exists
       const existingUser = await User.findOne({ account });
       
       if (existingUser) {
-        continue; // 已存在，跳过
+        continue; // Already exists, skip
       }
       
-      // 加密密码
+      // Encrypt password
       const passwordHash = await bcrypt.hash(password, 10);
       
-      // 创建用户
+      // Create user
       await User.create({
         account,
         passwordHash,
@@ -289,11 +289,11 @@ export const initDefaultUsers = async () => {
         accessibleLocationIds
       });
       
-      console.log(`✅ 自动创建预设账号: ${account} (${name}) - 角色: ${role}`);
+      console.log(`✅ Automatically created default user: ${account} (${name}) - Role: ${role}`);
     }
   } catch (error) {
-    // 静默处理错误，不影响服务器启动
-    console.error('⚠️  初始化预设账号时出错（不影响运行）:', error.message);
+    // Silent error handling,不影响服务器启动
+    console.error('⚠️  Error initializing default users:', error.message);
   }
 };
 

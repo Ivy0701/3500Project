@@ -136,34 +136,34 @@ const route = useRoute();
 
 const userRole = computed(() => appStore.user.role);
 
-// 区域仓库管理员的库存警报（从后端获取）
+// Inventory alerts for regional warehouse managers (from backend)
 const inventoryAlerts = ref([]);
-// 区域仓库管理员的待处理补货任务（从后端获取）
+// Pending replenishment tasks for regional warehouse managers (from backend)
 const pendingReplenishmentTasks = ref([]);
-// 总仓库管理员的待审批申请队列（从后端获取）
+// Pending approval queue for central warehouse managers (from backend)
 const centralApprovalQueue = ref([]);
 
-// 根据角色决定使用哪个数据源
+// Determine which data source to use based on the role
 const alerts = computed(() => {
   if (userRole.value === 'regionalManager') {
     return inventoryAlerts.value;
   }
-  // 其他角色使用 store 中的静态数据
+  // Other roles use static data in the store
   return appStore.alerts;
 });
 
-// 销售员的待处理售后请求（从数据库获取）
+// Pending after-sales requests for sales (from database)
 const pendingAfterSalesRequests = ref([]);
 
 const tasksForRole = computed(() => {
   if (userRole.value === 'regionalManager') {
     return pendingReplenishmentTasks.value;
   }
-  // 销售员不再使用假数据，使用真实的售后请求
+  // Sales no longer use fake data, use real after-sales requests
   if (userRole.value === 'sales') {
     return [];
   }
-  // 其他角色使用 store 中的静态数据
+  // Other roles use static data in the store
   return appStore.tasks.filter((task) => task.role === userRole.value);
 });
 
@@ -177,15 +177,15 @@ const taskCount = computed(() => {
   return tasksForRole.value.length;
 });
 
-// 加载销售员的待处理售后请求
+// Load pending after-sales requests for sales
 const loadSalesAfterSalesRequests = async () => {
   try {
     const orders = await fetchOrders();
-    // 筛选出有售后请求且状态为pending的订单
+    // Filter out orders with after-sales requests and status is pending
     const pendingRequests = orders
       .filter(o => o.afterSales && o.afterSales.type && o.afterSales.reason && o.afterSales.status === 'pending')
       .map(o => {
-        // 根据订单金额判断优先级
+        // Determine priority based on the order amount
         const amount = o.totalAmount || 0;
         let priority = 'info';
         let priorityLabel = 'Medium';
@@ -201,7 +201,7 @@ const loadSalesAfterSalesRequests = async () => {
           priorityLabel = 'Low';
         }
         
-        // 格式化请求日期
+        // Format the request date
         const requestDate = o.afterSales.createdAt || o.updatedAt || o.createdAt;
         let dateText = 'N/A';
         if (requestDate) {
@@ -240,13 +240,13 @@ const loadSalesAfterSalesRequests = async () => {
   }
 };
 
-// 加载区域仓库管理员的实际数据
+// Load actual data for regional warehouse managers
 const loadRegionalManagerData = async () => {
   try {
-    // 1. 获取库存警报（ReplenishmentAlert）- 用于 Inventory Alerts
+    // 1. Get inventory alerts (ReplenishmentAlert) - for Inventory Alerts
     const alertsData = await fetchReplenishmentAlerts();
     inventoryAlerts.value = alertsData.map(alert => {
-      // 根据库存水平确定状态
+      // Determine status based on the inventory level
       let status = 'Low Stock';
       if (alert.level === 'danger' || alert.stock === 0) {
         status = 'Critically Low';
@@ -265,40 +265,40 @@ const loadRegionalManagerData = async () => {
       };
     });
 
-    // 2. 获取待发运订单（TransferOrder 中状态为 PENDING 的）- 用于 Pending Replenishment Tasks
+    // 2. Get pending dispatch orders (TransferOrder with status PENDING) - for Pending Replenishment Tasks
     const locationId = appStore.user.assignedLocationId || appStore.user.accessibleLocationIds?.[0] || 'WH-EAST';
     const transfers = await fetchTransfers(locationId);
     
-    // 筛选出 PENDING 状态的调拨单（待发运订单）
+    // Filter out dispatch orders with status PENDING (pending dispatch orders)
     const pendingTransfers = transfers.filter(transfer => transfer.status === 'PENDING');
     
     pendingReplenishmentTasks.value = pendingTransfers.map(transfer => {
-      // 根据补货数量判断优先级：数量越多，紧急程度越高
+      // Determine priority based on the replenishment quantity: the more quantity, the higher the urgency
       const quantity = transfer.quantity || 0;
       let priority = 'info';
       let priorityLabel = 'Medium';
       
       if (quantity >= 150) {
-        // 150件以上：High
+        // More than 150 units: High
         priority = 'warning';
         priorityLabel = 'High';
       } else if (quantity >= 100) {
-        // 100-149件：Medium-High
+        // 100-149 units: Medium-High
         priority = 'info';
         priorityLabel = 'Medium';
       } else if (quantity >= 50) {
-        // 50-99件：Medium
+        // 50-99 units: Medium
         priority = 'info';
         priorityLabel = 'Medium';
       } else {
-        // 50件以下：Low
+        // Less than 50 units: Low
         priority = 'default';
         priorityLabel = 'Low';
       }
       
-      // 格式化截止日期（使用创建时间 + 预计处理时间）
+      // Format the deadline (using the creation time + estimated processing time)
       const createdAt = new Date(transfer.createdAt);
-      const estimatedDeadline = new Date(createdAt.getTime() + 2 * 24 * 3600 * 1000); // 2天后
+      const estimatedDeadline = new Date(createdAt.getTime() + 2 * 24 * 3600 * 1000); // 2 days later
       const nowDate = new Date();
       const today = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate());
       const deadlineDay = new Date(estimatedDeadline.getFullYear(), estimatedDeadline.getMonth(), estimatedDeadline.getDate());
@@ -326,18 +326,18 @@ const loadRegionalManagerData = async () => {
     
   } catch (error) {
     console.error('Failed to load regional manager data:', error);
-    // 如果加载失败，使用空数组
+    // If loading fails, use an empty array
     inventoryAlerts.value = [];
     pendingReplenishmentTasks.value = [];
   }
 };
 
-// 加载总仓库管理员的待审批申请队列
+// Load pending approval queue for central warehouse managers
 const loadCentralManagerData = async () => {
   try {
     const allApplications = await fetchReplenishmentApplications();
     
-    // 去重：根据 requestId 去重，保留最新的记录
+    // Remove duplicates: remove duplicates based on requestId, keep the latest record
     const uniqueApplications = [];
     const seenRequestIds = new Set();
     for (const app of allApplications) {
@@ -347,17 +347,17 @@ const loadCentralManagerData = async () => {
       }
     }
     
-    // 待审批的申请：PENDING 和 PROCESSING 状态
+    // Pending applications: PENDING and PROCESSING status
     const pendingStatuses = ['PENDING', 'PROCESSING'];
     const pendingApps = uniqueApplications.filter((item) => pendingStatuses.includes(item.status));
     
-    // 映射为 Dashboard 显示的格式
+    // Map to the format displayed on the Dashboard
     centralApprovalQueue.value = pendingApps.map(app => {
-      // 根据库存水平和数量判断优先级
+      // Determine priority based on the inventory level and quantity
       let level = 'info';
       let levelLabel = 'Review';
       
-      // 如果库存为0或极低，标记为Urgent
+      // If the stock is 0 or critically low, mark as Urgent
       const stock = app.stock || 0;
       const threshold = app.threshold || 0;
       if (stock === 0 || stock < threshold * 0.5) {
@@ -374,7 +374,7 @@ const loadCentralManagerData = async () => {
         levelLabel = 'Normal';
       }
       
-      // 格式化提交时间
+      // Format the submission time
       const submittedAt = app.createdAt || app.updatedAt || new Date();
       const date = new Date(submittedAt);
       const timeText = date.toLocaleTimeString('en-US', { 
@@ -402,26 +402,26 @@ const loadCentralManagerData = async () => {
 onMounted(() => {
   if (userRole.value === 'sales') {
     loadSalesAfterSalesRequests();
-    // 定期刷新售后请求
+    // Periodically refresh after-sales requests
     setInterval(() => {
       loadSalesAfterSalesRequests();
-    }, 10000); // 每10秒刷新
+    }, 10000); // Every 10 seconds refresh
   } else if (userRole.value === 'regionalManager') {
     loadRegionalManagerData();
-    // 定期刷新区域管理员数据
+    // Periodically refresh regional manager data
     setInterval(() => {
       loadRegionalManagerData();
-    }, 10000); // 每10秒刷新
+    }, 10000); // Every 10 seconds refresh
   } else if (userRole.value === 'centralManager') {
     loadCentralManagerData();
-    // 定期刷新总仓库管理员数据
+    // Periodically refresh central warehouse manager data
     setInterval(() => {
       loadCentralManagerData();
-    }, 10000); // 每10秒刷新
+    }, 10000); // Every 10 seconds refresh
   }
 });
 
-// 监听用户角色变化，重新加载数据
+// Listen for user role changes, reload data
 watch(userRole, (newRole) => {
   if (newRole === 'sales') {
     loadSalesAfterSalesRequests();
@@ -430,7 +430,7 @@ watch(userRole, (newRole) => {
   } else if (newRole === 'centralManager') {
     loadCentralManagerData();
   } else {
-    // 如果不是已知角色，清空数据
+    // If it is not a known role, clear the data
     pendingAfterSalesRequests.value = [];
     inventoryAlerts.value = [];
     pendingReplenishmentTasks.value = [];
@@ -443,7 +443,7 @@ const supplierFollowUps = ref([
   { id: 'sup-2', title: 'HuaTeng Quality Audit', desc: 'Follow up on packaging improvement', deadline: 'Dec 02' }
 ]);
 
-// 根据角色显示不同的功能卡片
+// Display different function cards based on the role
 const shortcuts = computed(() => {
   if (userRole.value === 'sales') {
     return [
@@ -607,4 +607,3 @@ const welcomeActions = computed(() => {
   }
 }
 </style>
-

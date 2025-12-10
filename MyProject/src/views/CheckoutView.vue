@@ -405,18 +405,18 @@ const loadSelectedAddress = () => {
   
   const selectedAddress = savedAddresses.value.find(addr => addr.id === selectedSavedAddressId.value);
   if (selectedAddress) {
-    // 解析电话号码（格式可能是 "+86 12345678901" 或只是数字）
-    let phoneNumber = selectedAddress.phone || '';
+      //Parse phone number (format may be "+86 12345678901" or just numbers)
+      let phoneNumber = selectedAddress.phone || '';
     let phoneCode = selectedAddress.phoneCode || '+86';
     
-    // 如果电话号码包含国家码，提取出来
+    // If the phone number contains the country code, extract it
     if (phoneNumber.startsWith('+')) {
       const parts = phoneNumber.split(' ');
       if (parts.length > 1) {
         phoneCode = parts[0];
         phoneNumber = parts.slice(1).join(' ');
       } else {
-        // 尝试从电话号码中提取国家码
+        // Try to extract the country code from the phone number
         if (phoneNumber.startsWith('+86')) {
           phoneCode = '+86';
           phoneNumber = phoneNumber.substring(3).trim();
@@ -456,7 +456,7 @@ const loadDefaultAddress = () => {
       const addresses = JSON.parse(stored);
       const defaultAddress = addresses.find(addr => addr.isDefault);
       if (defaultAddress) {
-        // 解析电话号码
+        // Parse phone number
         let phoneNumber = defaultAddress.phone || '';
         let phoneCode = defaultAddress.phoneCode || '+86';
         
@@ -488,7 +488,7 @@ const loadDefaultAddress = () => {
           notes: defaultAddress.notes || ''
         });
         
-        // 如果默认地址存在，也设置选中
+        // If the default address exists, also set it as selected
         selectedSavedAddressId.value = defaultAddress.id;
       }
     } catch (e) {
@@ -647,12 +647,12 @@ const submitOrder = async () => {
   }
 
   // Check inventory availability before submitting order
-  // 检查同一区域所有门店的库存，只要有一个门店满足需求就可以下单
+  // Check the inventory of all stores in the same region, as long as one store meets the demand can place an order
   const storeLocationId = resolveInventoryLocationFromAddressAndPayment(addressForm, selectedPaymentMethod.value);
   const regionStores = getRegionStores(storeLocationId);
   
   try {
-    // 获取同一区域所有门店的库存
+    // Get the inventory of all stores in the same region
     const allStoreInventories = {};
     for (const storeId of regionStores) {
       try {
@@ -663,16 +663,16 @@ const submitOrder = async () => {
     });
       } catch (storeError) {
         console.warn(`Failed to get inventory for store ${storeId}:`, storeError);
-        // 继续检查其他门店
+        // Continue checking other stores
       }
     }
 
-    // 检查每个商品是否至少在一个门店有足够的库存
+    // Check if each item has enough inventory in at least one store
     for (const item of cartItems.value) {
       let itemAvailable = false;
       let maxAvailable = 0;
       
-      // 检查所有门店的库存
+      // Check the inventory of all stores
       for (const storeId of regionStores) {
         const storeInventory = allStoreInventories[storeId];
         if (storeInventory && storeInventory[item.id]) {
@@ -680,7 +680,7 @@ const submitOrder = async () => {
           maxAvailable = Math.max(maxAvailable, inventory.available || 0);
           if (inventory.available >= item.quantity) {
             itemAvailable = true;
-            break; // 找到一个有足够库存的门店就足够了
+            break; // As long as one store has enough inventory, the order can be placed
           }
         }
       }

@@ -36,8 +36,8 @@ export const createTransferOrder = async (req, res, next) => {
 
     let transferDoc;
     await session.withTransaction(async () => {
-      // 在创建调拨单时就从fromLocationId减少库存
-      // 这样可以确保从选择的仓库立即扣除库存
+      // When creating the transfer order, reduce the inventory at fromLocationId
+      // This ensures that the inventory is immediately deducted from the selected warehouse
       console.log(`[Transfer] Reducing inventory at source: ${fromLocationId}, product: ${productSku}, quantity: -${quantity}`);
       await adjustInventory({
         locationId: fromLocationId,
@@ -64,14 +64,14 @@ export const createTransferOrder = async (req, res, next) => {
               { status: 'PENDING', note: 'Transfer order created', createdAt: new Date() },
               { status: 'IN_TRANSIT', note: 'Dispatched', createdAt: new Date() }
             ],
-            inventoryUpdated: true, // 已在创建时更新库存
+            inventoryUpdated: true, // Inventory has been updated when the transfer order is created
             requestId: requestId || null
           }
         ],
         { session }
       );
 
-      // 使用fromLocationName作为supplier，而不是硬编码'Central Warehouse'
+      // Use fromLocationName as supplier, instead of hardcoding 'Central Warehouse'
       await ReceivingSchedule.create(
         [
           {
@@ -143,14 +143,14 @@ export const getTransferOrders = async (req, res, next) => {
     const user = req.user;
     const filter = {};
 
-    // 如果是区域仓库管理员，根据用户的 assignedLocationId 过滤
+    // If the user is a regional warehouse manager, filter based on the user's assignedLocationId
     if (user && user.role === 'regionalManager') {
       const userLocationId = locationId || user.assignedLocationId;
       if (userLocationId) {
-        // 区域仓库管理员可以看到从自己仓库发出的调拨单（fromLocationId）或发到自己仓库的调拨单（toLocationId）
+        // Regional warehouse managers can see transfer orders sent from their warehouse (fromLocationId) or received at their warehouse (toLocationId)
         filter.$or = [{ fromLocationId: userLocationId }, { toLocationId: userLocationId }];
       } else if (user.accessibleLocationIds && user.accessibleLocationIds.length > 0) {
-        // 如果没有 assignedLocationId，使用 accessibleLocationIds
+        // If there is no assignedLocationId, use accessibleLocationIds
         const warehouseIds = user.accessibleLocationIds.filter(id => id.startsWith('WH-'));
         if (warehouseIds.length > 0) {
           filter.$or = warehouseIds.flatMap(id => [
@@ -160,10 +160,10 @@ export const getTransferOrders = async (req, res, next) => {
         }
       }
     } else if (locationId) {
-      // 其他角色或明确指定 locationId 时使用 locationId
+      // When other roles or explicitly specify locationId, use locationId
       filter.$or = [{ fromLocationId: locationId }, { toLocationId: locationId }];
     }
-    // 中央管理员可以看到所有调拨单，不需要过滤
+    // Central warehouse managers can see all transfer orders, no filtering needed
 
     if (status) {
       filter.status = status;
@@ -200,7 +200,7 @@ export const dispatchTransferOrder = async (req, res, next) => {
     }
 
     await session.withTransaction(async () => {
-      // 1. 减少来源仓库（区域仓库）的库存
+      // 1. Reduce the inventory at the source warehouse (regional warehouse)
       await adjustInventory({
         locationId: transfer.fromLocationId,
         locationName: transfer.fromLocationName,
@@ -210,7 +210,7 @@ export const dispatchTransferOrder = async (req, res, next) => {
         session
       });
 
-      // 2. 增加目标仓库（门店）的库存
+      // 2. Increase the inventory at the target warehouse (store)
       await adjustInventory({
         locationId: transfer.toLocationId,
         locationName: transfer.toLocationName,
@@ -220,8 +220,8 @@ export const dispatchTransferOrder = async (req, res, next) => {
         session
       });
 
-      // 3. 检查区域仓库库存是否小于最大库存量的30%（1000*0.3=300）
-      // 如果是，创建ReplenishmentAlert
+      // 3. Check if the regional warehouse inventory is less than 30% of the maximum inventory (1000*0.3=300)
+      // If so, create a ReplenishmentAlert
       const regionalWarehouses = ['WH-EAST', 'WH-WEST', 'WH-NORTH', 'WH-SOUTH'];
       if (regionalWarehouses.includes(transfer.fromLocationId)) {
         const inventory = await Inventory.findOne({
@@ -230,12 +230,12 @@ export const dispatchTransferOrder = async (req, res, next) => {
         }).session(session);
 
         if (inventory) {
-          const maxStock = inventory.totalStock || 1000; // 默认最大库存为1000
-          const threshold = maxStock * 0.3; // 30%阈值
+          const maxStock = inventory.totalStock || 1000; // Default maximum stock is 1000
+          const threshold = maxStock * 0.3; // 30% threshold
 
           if (inventory.available < threshold) {
             const alertId = `ALERT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-            const suggestedQty = Math.ceil(maxStock * 0.9 - inventory.available); // 建议补到90%
+            const suggestedQty = Math.ceil(maxStock * 0.9 - inventory.available); // Suggest to replenish to 90%
 
             await ReplenishmentAlert.findOneAndUpdate(
               { productId: transfer.productSku, warehouseId: transfer.fromLocationId },

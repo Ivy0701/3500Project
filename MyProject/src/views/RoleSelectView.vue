@@ -39,7 +39,7 @@ const router = useRouter();
 const appStore = useAppStore();
 const selectedRole = ref(null);
 
-// 当进入角色选择页面时，如果用户未登录，清除所有存储的角色信息
+// When entering the role selection page, if the user is not logged in, clear all stored role information
 onMounted(() => {
   if (!appStore.auth.isAuthenticated) {
     appStore.selectedRole = null;
@@ -76,7 +76,7 @@ const roleCards = [
 
 const selectRole = (role) => {
   selectedRole.value = role;
-  // 保存选择的角色到store
+  // Save the selected role to the store
   appStore.selectedRole = role;
   window.sessionStorage.setItem('selectedRole', role);
 };

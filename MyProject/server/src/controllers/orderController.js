@@ -83,10 +83,10 @@ export const getOrders = async (req, res, next) => {
       query = { customerId: userId };
     } else if (userRole === 'sales') {
       // Sales staff can see all orders assigned to their region's stores
-      // 同一区域的所有门店销售员都能看到该区域的所有订单
+      // All store sales staff in the same region can see all orders in that region
       if (userRegion && userRegion !== 'ALL') {
-        // 查询所有inventoryLocationId包含该region的订单
-        // 这样华西的所有4个销售员都能看到华西区域的订单
+        // Query all orders with inventoryLocationId containing the region
+        // This way, all 4 sales staff in the West region can see the orders in the West region
         query = {
           $or: [
             { inventoryLocationId: { $regex: new RegExp(`STORE-${userRegion}`, 'i') } },
@@ -95,12 +95,12 @@ export const getOrders = async (req, res, next) => {
         };
         console.log(`[Order Query] Sales user: ${user.account}, Region: ${userRegion}, Query:`, JSON.stringify(query));
       } else {
-        // 如果没有region信息，返回空数组（不应该发生，但安全起见）
+        // If there is no region information, return an empty array (should not happen, but for safety)
         console.log(`[Order Query] Sales user: ${user.account}, No region found, returning empty`);
         return res.json([]);
       }
     } else if (userRole === 'regionalManager') {
-      // 区域仓库管理员可以看到他们区域的订单
+      // Regional warehouse managers can see orders in their region
       if (userRegion && userRegion !== 'ALL') {
         query = {
           $or: [
@@ -112,7 +112,7 @@ export const getOrders = async (req, res, next) => {
         return res.json([]);
       }
     } else if (userRole === 'centralManager') {
-      // 总仓库管理员可以看到所有订单
+      // Central warehouse managers can see all orders
       query = {};
     } else {
       // Other roles return empty array
@@ -156,7 +156,7 @@ const getRegionStores = (storeId) => {
 };
 
 const resolveInventoryLocationFromAddressAndPayment = (shippingAddress, paymentMethod) => {
-  // 默认线上门店（无明显区域信息时）
+  // Default online store (when there is no obvious region information)
   let storeId = DEFAULT_STORE_LOCATION_ID;
   let warehouseId = null;
 
@@ -168,13 +168,13 @@ const resolveInventoryLocationFromAddressAndPayment = (shippingAddress, paymentM
   const stateRaw = shippingAddress.state || '';
   const state = stateRaw.toLowerCase().trim();
 
-  // 根据国家/省份映射到区域
+  // Map country/province to region
   let regionKey = null;
   if (country === 'HK') {
-    // 香港归为华南
+    // Hong Kong is mapped to South China
     regionKey = 'SOUTH';
   } else if (country === 'CN') {
-    // 支持多种大小写和拼写变体
+    // Support multiple case and spelling variations
     if (state === 'shanghai' || state.includes('shanghai')) {
       regionKey = 'EAST';
     } else if (state === 'beijing' || state.includes('beijing')) {
@@ -188,7 +188,7 @@ const resolveInventoryLocationFromAddressAndPayment = (shippingAddress, paymentM
   
   console.log(`[Order Allocation] Country: ${country}, State (raw): "${stateRaw}", State (normalized): "${state}", Region: ${regionKey}`);
 
-  // 区域到仓库 / 门店 ID 的映射
+  // Mapping of region to warehouse / store ID
   const REGION_TO_LOCATIONS = {
     EAST: {
       warehouse: 'WH-EAST',
@@ -213,15 +213,15 @@ const resolveInventoryLocationFromAddressAndPayment = (shippingAddress, paymentM
   };
 
   if (!regionKey || !REGION_TO_LOCATIONS[regionKey]) {
-    // 回退到默认门店
+    // Fall back to default store
     return { storeId, warehouseId };
   }
 
   const regionConfig = REGION_TO_LOCATIONS[regionKey];
 
-  // 支付方式决定是门店1还是门店2：
-  // - 信用卡 / 借记卡 → 门店2
-  // - 支付宝 / 微信 → 门店1
+  // Payment method determines which store:
+  // - Credit card / Debit card → Store 2
+  // - Alipay / WeChat → Store 1
   const method = (paymentMethod || '').toLowerCase();
   const isCard = method === 'credit' || method === 'debit';
 
@@ -262,10 +262,10 @@ export const createOrder = async (req, res, next) => {
       return res.status(400).json({ message: 'Invalid order amount' });
     }
 
-    // 根据收货地址 + 支付方式确定订单对应的库存位置
-    // - 香港 / Shanghai / Beijing / Guangzhou / Xinjiang 分配到对应大区
-    // - 信用卡 / 借记卡 → 门店2 + 对应区域仓库
-    // - 支付宝 / 微信 → 门店1 + 对应区域仓库
+    // Determine the inventory location corresponding to the order based on the shipping address + payment method
+    // - Hong Kong / Shanghai / Beijing / Guangzhou / Xinjiang assigned to the corresponding region
+    // - Credit card / Debit card → Store 2 + corresponding regional warehouse
+    // - Alipay / WeChat → Store 1 + corresponding regional warehouse
     const { storeId, warehouseId } = resolveInventoryLocationFromAddressAndPayment(shippingAddress, paymentMethod);
     const inventoryLocationId = storeId || DEFAULT_STORE_LOCATION_ID;
     
@@ -283,7 +283,7 @@ export const createOrder = async (req, res, next) => {
       totalAmount,
       remark,
       inventoryLocationId,
-      // 为后续调拨 / 报表留出信息：该订单归属的区域仓库
+      // For future replenishment / reporting: The regional warehouse the order belongs to
       warehouseLocationId: warehouseId || undefined,
       inventoryStatus: 'Inventory Checking',
       status: 'pending',

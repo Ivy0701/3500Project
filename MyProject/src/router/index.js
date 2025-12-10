@@ -7,7 +7,7 @@ const routes = [
     name: 'RoleSelect',
     component: () => import('../views/RoleSelectView.vue')
   },
-  // 顾客端路由
+  // Customer side route
   {
     path: '/customer',
     component: () => import('../layouts/CustomerLayout.vue'),
@@ -63,14 +63,14 @@ const routes = [
     component: () => import('../views/ResetPasswordView.vue'),
     meta: { guestOnly: true }
   },
-  // 员工端登录（销售员/仓库管理员）
+  // Staff login (sales staff/warehouse manager)
   {
     path: '/staff/login',
     name: 'StaffLogin',
     component: () => import('../views/LoginView.vue'),
     meta: { guestOnly: true }
   },
-  // 销售员路由
+  // Sales staff route
   {
     path: '/app/sales',
     component: () => import('../layouts/MainLayout.vue'),
@@ -102,7 +102,7 @@ const routes = [
       }
     ]
   },
-  // 区域仓库管理员路由
+  // Regional warehouse manager route
   {
     path: '/app/regional',
     component: () => import('../layouts/MainLayout.vue'),
@@ -139,7 +139,7 @@ const routes = [
       }
     ]
   },
-  // 总仓库管理员路由
+  // Central warehouse manager route
   {
     path: '/app/central',
     component: () => import('../layouts/MainLayout.vue'),
@@ -171,7 +171,7 @@ const routes = [
       }
     ]
   },
-  // 兼容旧路由（在路由守卫中处理重定向）
+  // Compatible with old routes (handle redirection in route guards)
   {
     path: '/app',
     beforeEnter: (to, from, next) => {
@@ -199,17 +199,17 @@ const router = createRouter({
   routes
 });
 
-// 路由守卫
+// Route guard
 router.beforeEach((to, from, next) => {
   const appStore = useAppStore();
 
-  // 如果未登录但需要认证，跳转到角色选择页
+  // If not logged in but needs authentication, redirect to role selection page
   if (to.meta.requiresAuth && !appStore.auth.isAuthenticated) {
     next('/');
     return;
   }
 
-  // 如果已登录但访问游客页面，根据角色跳转
+  // If logged in but accessing guest page, redirect based on role
   if (to.meta.guestOnly && appStore.auth.isAuthenticated) {
     const role = appStore.user.role;
       if (role === 'customer') {
@@ -226,11 +226,11 @@ router.beforeEach((to, from, next) => {
     return;
   }
 
-  // 权限检查：检查角色是否允许访问
+  // Permission check: check if the role is allowed to access
   if (to.meta.allowedRoles && appStore.auth.isAuthenticated) {
     const userRole = appStore.user.role;
     if (!to.meta.allowedRoles.includes(userRole)) {
-      // 角色不匹配，根据用户角色跳转到对应首页
+      // Role does not match, redirect to the corresponding home page based on the user role
       if (userRole === 'customer') {
         next('/customer/shop');
       } else if (userRole === 'sales') {

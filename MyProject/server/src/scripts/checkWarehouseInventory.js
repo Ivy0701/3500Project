@@ -7,7 +7,7 @@ import ReplenishmentRequest from '../models/ReplenishmentRequest.js';
 dotenv.config();
 
 /**
- * 检查区域仓库库存并查看是否有补货请求
+ * Check regional warehouse inventory and check if there is a replenishment request
  */
 const checkWarehouseInventory = async () => {
   try {
@@ -34,7 +34,7 @@ const checkWarehouseInventory = async () => {
           if (inventory.available < threshold30Percent) {
             console.log(`      ⚠️  Below threshold!`);
             
-            // 检查是否有补货请求
+            // Check if there is a replenishment request
             const requests = await ReplenishmentRequest.find({
               productId,
               warehouseId,

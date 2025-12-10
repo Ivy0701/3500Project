@@ -92,7 +92,7 @@ const route = useRoute();
 const appStore = useAppStore();
 
 const role = computed(() => {
-  // 从URL参数获取角色，或从store获取
+  // Get the role from the URL parameters, or from the store
   return route.query.role || appStore.selectedRole || window.sessionStorage.getItem('selectedRole') || 'customer';
 });
 
@@ -143,7 +143,7 @@ const tips = computed(() => {
 });
 
 const showPresetAccounts = computed(() => {
-  // 只在销售员和仓库管理员登录时显示预设账号
+  // Only show preset accounts when sales or warehouse managers login
   return role.value === 'sales' || role.value === 'regionalManager' || role.value === 'centralManager';
 });
 

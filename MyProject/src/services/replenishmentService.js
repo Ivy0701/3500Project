@@ -29,7 +29,6 @@ export const fetchReplenishmentApplications = async (params = {}) => {
       dataLength: Array.isArray(response.data) ? response.data.length : 'N/A',
       data: response.data
     });
-    // 确保返回的是数组
     if (Array.isArray(response.data)) {
       console.log('[fetchReplenishmentApplications] Returning array of', response.data.length, 'items');
       return response.data;
@@ -47,7 +46,6 @@ export const fetchReplenishmentApplications = async (params = {}) => {
       status: error.response?.status,
       statusText: error.response?.statusText
     });
-    // 重新抛出错误，让调用者处理
     throw error;
   }
 };

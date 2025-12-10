@@ -6,9 +6,9 @@ import Inventory from '../models/Inventory.js';
 dotenv.config();
 
 /**
- * 更新西部仓库（West Warehouse）中 PROD-001 (Casual T-Shirt) 的 Available 为 400
+ * Update the Available of PROD-001 (Casual T-Shirt) in West Warehouse to 400
  * 
- * 使用方式（在项目根目录执行）：
+ * Usage (in the project root directory):
  *   node server/src/scripts/updateWestWarehouseCasualTShirt.js
  */
 const updateWestWarehouseCasualTShirt = async () => {
@@ -44,7 +44,7 @@ const updateWestWarehouseCasualTShirt = async () => {
       console.log('ℹ️  No changes made. Record may already have available = 400');
     }
 
-    // 验证更新结果
+    // Verify the update result
     const inventory = await Inventory.findOne({ productId: 'PROD-001', locationId: 'WH-WEST' });
     if (inventory) {
       console.log(`\n📦 Current inventory status:`);

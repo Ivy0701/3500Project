@@ -10,22 +10,22 @@ import { authenticateToken, requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
-// 统一鉴权：所有库存接口都会解析 JWT；部分接口要求强制登录
+// Unified authentication: All inventory APIs will parse JWT; some APIs require login
 router.use(authenticateToken);
 
-// 初始化库存，只在开发/演示环境下调用
+// Initialize inventory, only called in development/demo environment
 router.post('/initialize', initializeInventory);
 
-// 全量库存列表（后台统计）
+// Full inventory list (backend statistics)
 router.get('/', getInventory);
 
-// 根据位置获取库存：GET /api/inventory/:locationId
+// Get inventory by location: GET /api/inventory/:locationId
 router.get('/:locationId', requireAuth, getInventoryByLocation);
 
-// 销售出货：PATCH /api/inventory/update
+// Sales出货：PATCH /api/inventory/update
 router.patch('/update', requireAuth, updateInventoryForSale);
 
-// 仓库/门店之间调拨：PATCH /api/inventory/transfer
+// Warehouse/store transfer: PATCH /api/inventory/transfer
 router.patch('/transfer', requireAuth, transferInventory);
 
 export default router;

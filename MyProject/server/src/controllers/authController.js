@@ -15,7 +15,7 @@ const createToken = (user) => {
   );
 };
 
-// 返回给前端的用户结构中增加库存相关字段，方便前端在调用库存接口时携带权限信息
+// Add inventory-related fields to the user structure returned to the frontend, to facilitate carrying permission information when calling inventory APIs
 const sanitizeUser = (user) => ({
   id: user._id.toString(),
   account: user.account,

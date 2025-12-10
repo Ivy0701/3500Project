@@ -191,11 +191,11 @@ const statusMap = {
   COMPLETED: { label: 'Completed', class: 'success' }
 };
 
-// Recent Allocations 显示的是补货申请的状态，不是调拨单的状态
+// Recent Allocations display the status of the replenishment application, not the status of the transfer order
 const applicationStatusForAllocation = (request) => {
   if (!request) return { label: 'Unknown', class: 'default' };
-  // 如果有 requestId，说明这是补货申请关联的调拨单
-  // 需要查找对应的补货申请状态
+  // If there is requestId, it means this is a transfer order associated with a replenishment application
+  // Need to find the corresponding replenishment application status
   return statusMap[request.status] || { label: request.status || 'Unknown', class: 'default' };
 };
 
@@ -230,7 +230,7 @@ const transfer = reactive({
   reason: ''
 });
 
-// 保存表单数据到 localStorage
+// Save form data to localStorage
 const saveTransferFormToStorage = (requestId) => {
   if (!requestId) return;
   try {
@@ -248,14 +248,14 @@ const saveTransferFormToStorage = (requestId) => {
   }
 };
 
-// 从 localStorage 恢复表单数据
+// Load form data from localStorage
 const loadTransferFormFromStorage = (requestId) => {
   if (!requestId) return false;
   try {
     const saved = localStorage.getItem(`transferForm_${requestId}`);
     if (saved) {
       const formData = JSON.parse(saved);
-      // 检查数据是否过期（7天）
+      // Check if the data is expired (7 days)
       if (formData.savedAt && Date.now() - formData.savedAt < 7 * 24 * 60 * 60 * 1000) {
         transfer.from = formData.from || 'Central Warehouse';
         transfer.to = formData.to || '';
@@ -264,7 +264,7 @@ const loadTransferFormFromStorage = (requestId) => {
         transfer.reason = formData.reason || '';
         return true;
       } else {
-        // 清除过期的数据
+        // Clear expired data
         localStorage.removeItem(`transferForm_${requestId}`);
       }
     }
@@ -274,7 +274,7 @@ const loadTransferFormFromStorage = (requestId) => {
   return false;
 };
 
-// 清除保存的表单数据
+// Clear saved form data
 const clearTransferFormStorage = (requestId) => {
   if (!requestId) return;
   try {
@@ -284,7 +284,7 @@ const clearTransferFormStorage = (requestId) => {
   }
 };
 
-// 监听表单字段变化，自动保存
+// Listen for form field changes, automatically save
 watch(
   () => [transfer.from, transfer.to, transfer.sku, transfer.quantity, transfer.reason],
   () => {
@@ -311,8 +311,8 @@ const timeline = computed(() =>
 );
 
 const loadApplications = async () => {
-  // 只有在需要显示加载状态时才设置loading
-  // 如果数据已存在，静默刷新
+  // Only set loading when it is necessary to display the loading status
+  // If the data already exists, silently refresh
   if (applications.value.length === 0 && !selectedApplication.value) {
     loading.value = true;
   }
@@ -328,10 +328,10 @@ const loadApplications = async () => {
       data: allApplications
     });
     
-    // 确保 allApplications 是数组
+    // Ensure allApplications is an array
     if (!Array.isArray(allApplications)) {
       console.error('[loadApplications] ERROR: fetchReplenishmentApplications returned non-array:', allApplications);
-      // 不要清空现有数据，保留之前的数据
+      // Do not clear existing data, keep previous data
       if (!applications.value || applications.value.length === 0) {
         applications.value = [];
         selectedApplication.value = null;
@@ -340,7 +340,7 @@ const loadApplications = async () => {
       return;
     }
     
-    // 去重：根据 requestId 去重，保留最新的记录
+    // Remove duplicates: remove duplicates based on requestId, keep the latest record
     const uniqueApplications = [];
     const seenRequestIds = new Set();
     for (const app of allApplications) {
@@ -350,17 +350,17 @@ const loadApplications = async () => {
       }
     }
     
-    // 待审批的申请：PENDING 和 PROCESSING 状态
+    // Pending applications: PENDING and PROCESSING status
     const pendingStatuses = ['PENDING', 'PROCESSING'];
     const pendingApps = uniqueApplications.filter((item) => pendingStatuses.includes(item.status));
     console.log('[loadApplications] Filtered pending applications:', pendingApps.length);
     
-    // 始终更新 applications，即使为空数组也要更新
+    // Always update applications, even if it is an empty array
     applications.value = pendingApps;
 
-    // 更新选中的申请，确保状态同步
+    // Update the selected application, ensure the status is synchronized
     if (!selectedApplication.value) {
-      // 如果之前没有选中的申请，选择第一个
+      // If there is no selected application before, select the first one
       const firstApp = applications.value[0] || null;
       if (firstApp) {
         selectApplication(firstApp);
@@ -369,7 +369,7 @@ const loadApplications = async () => {
       }
       console.log('[loadApplications] Selected first application:', selectedApplication.value?.requestId || 'none');
     } else {
-      // 如果之前有选中的申请，尝试刷新它，或者选择第一个
+      // If there is a selected application before, try to refresh it, or select the first one
       const refreshed =
         uniqueApplications.find((item) => item.requestId === selectedApplication.value.requestId) || null;
       const appToSelect = refreshed || applications.value[0] || null;
@@ -382,8 +382,7 @@ const loadApplications = async () => {
       console.log('[loadApplications] Refreshed selected application:', selectedApplication.value?.requestId || 'none');
     }
 
-    // 注意：selectApplication 已经处理了表单显示和数据恢复逻辑
-    // 这里不需要再次处理，避免重复逻辑
+    // Note: selectApplication has already handled the form display and data recovery logic
   } catch (error) {
     console.error('[loadApplications] ERROR: Failed to load applications:', error);
     console.error('[loadApplications] Error details:', {
@@ -391,8 +390,8 @@ const loadApplications = async () => {
       stack: error.stack,
       response: error.response?.data
     });
-    // 在错误情况下，如果数据已经存在，不要清空它
-    // 只有在数据为空时才设置为空数组
+    // In case of error, if the data already exists, do not clear it
+    // Only set to an empty array when the data is empty
     if (!applications.value || applications.value.length === 0) {
       applications.value = [];
       selectedApplication.value = null;
@@ -407,7 +406,7 @@ const loadApplications = async () => {
 const loadRecentAllocations = async () => {
   try {
     console.log('[loadRecentAllocations] Starting to fetch data...');
-    // 加载所有补货申请（已批准或已创建调拨单的）
+    // Load all replenishment applications (approved or transfer order created)
     console.log('[loadRecentAllocations] Calling fetchReplenishmentApplications()...');
     const allApplications = await fetchReplenishmentApplications();
     console.log('[loadRecentAllocations] API response (applications):', {
@@ -417,17 +416,17 @@ const loadRecentAllocations = async () => {
       data: allApplications
     });
     
-    // 确保 allApplications 是数组
+    // Ensure allApplications is an array
     if (!Array.isArray(allApplications)) {
       console.error('[loadRecentAllocations] ERROR: fetchReplenishmentApplications returned non-array:', allApplications);
-      // 不要清空现有数据，保留之前的数据
+      // Do not clear existing data, keep previous data
       if (!recentAllocations.value || recentAllocations.value.length === 0) {
         recentAllocations.value = [];
       }
       return;
     }
     
-    // 加载所有调拨单（不指定locationId以获取所有调拨单）
+    // Load all transfer orders (without specifying locationId to get all transfer orders)
     console.log('[loadRecentAllocations] Calling fetchTransfers()...');
     const transfers = await fetchTransfers();
     console.log('[loadRecentAllocations] API response (transfers):', {
@@ -437,17 +436,17 @@ const loadRecentAllocations = async () => {
       data: transfers
     });
     
-    // 确保 transfers 是数组
+    // Ensure transfers is an array
     if (!Array.isArray(transfers)) {
       console.error('[loadRecentAllocations] ERROR: fetchTransfers returned non-array:', transfers);
-      // 不要清空现有数据，保留之前的数据
+      // Do not clear existing data, keep previous data
       if (!recentAllocations.value || recentAllocations.value.length === 0) {
         recentAllocations.value = [];
       }
       return;
     }
     
-    // 创建一个 map，用于快速查找调拨单
+    // Create a map for quick lookup of transfer orders
     const transferMap = new Map();
     transfers.forEach(transfer => {
       if (transfer.requestId) {
@@ -455,10 +454,10 @@ const loadRecentAllocations = async () => {
       }
     });
     
-    // 组合显示：已批准但未创建调拨单的申请 + 已创建调拨单的申请
+    // Combined display: approved but not created transfer order applications + created transfer order applications
     const allocations = [];
     
-    // 1. 添加已批准、已创建调拨单或已拒绝的补货申请
+    // 1. Add approved, created transfer order or rejected replenishment applications
     const relevantApplications = allApplications.filter(app => 
       ['APPROVED', 'IN_TRANSIT', 'ARRIVED', 'COMPLETED', 'REJECTED'].includes(app.status)
     );
@@ -467,23 +466,23 @@ const loadRecentAllocations = async () => {
       const relatedTransfer = transferMap.get(app.requestId);
       
       if (relatedTransfer) {
-        // 已创建调拨单：显示调拨单信息，使用调拨单的状态和From信息
-        // 状态应该从调拨单读取，而不是从补货申请读取，以确保与区域仓库收货状态一致
-        // 将TransferOrder的状态映射到显示状态：
+        // Created transfer order: display transfer order information, use transfer order status and From information
+        // The status should be read from the transfer order, not from the replenishment application, to ensure consistency with the regional warehouse receipt status
+        // Map the status of the TransferOrder to the display status:
         // COMPLETED -> ARRIVED, IN_TRANSIT -> IN_TRANSIT
-        let displayStatus = 'IN_TRANSIT'; // 默认状态
+        let displayStatus = 'IN_TRANSIT'; // Default status
         if (relatedTransfer.status === 'COMPLETED') {
           displayStatus = 'ARRIVED';
         } else if (relatedTransfer.status === 'IN_TRANSIT') {
           displayStatus = 'IN_TRANSIT';
         } else if (relatedTransfer.status === 'PENDING') {
-          displayStatus = 'APPROVED'; // 如果还在pending，显示approved
+          displayStatus = 'APPROVED'; // If still pending, display approved
         }
         
-        // 确保fromLocationName从transfer读取，如果为空则从fromLocationId推导
+        // Ensure fromLocationName is read from the transfer, if empty, derive from fromLocationId
         let fromName = relatedTransfer.fromLocationName;
         if (!fromName && relatedTransfer.fromLocationId) {
-          // 如果fromLocationName为空，从fromLocationId推导
+          // If fromLocationName is empty, derive from fromLocationId
           const locationIdToName = {
             'WH-CENTRAL': 'Central Warehouse',
             'WH-EAST': 'East Warehouse',
@@ -500,15 +499,15 @@ const loadRecentAllocations = async () => {
           productSku: app.productId,
           productName: app.productName,
           quantity: app.quantity,
-          fromLocationName: fromName || app.warehouseName, // 如果有fromName就使用，否则使用warehouseName（作为最后的fallback）
+          fromLocationName: fromName || app.warehouseName, // If there is fromName, use it, otherwise use warehouseName (as the last fallback)
           toLocationName: relatedTransfer.toLocationName || app.warehouseName,
           status: displayStatus,
           createdAt: relatedTransfer.createdAt || app.updatedAt || app.createdAt
         });
       } else if (app.status === 'APPROVED' || app.status === 'REJECTED') {
-        // 已批准但未创建调拨单，或已拒绝：显示补货申请信息，From → To 为 "-"
+        // Approved but not created transfer order, or rejected: display replenishment application information, From → To is "-"
         allocations.push({
-          transferId: app.requestId, // 使用 requestId 作为显示ID
+          transferId: app.requestId, // Use requestId as the display ID
           requestId: app.requestId,
           productSku: app.productId,
           productName: app.productName,
@@ -521,13 +520,13 @@ const loadRecentAllocations = async () => {
       }
     });
     
-    // 按创建时间倒序排列
+    // Sort by creation time in descending order
     const sortedAllocations = allocations
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 20);
     
     console.log('[loadRecentAllocations] Processed allocations:', sortedAllocations.length);
-    // 始终更新 recentAllocations，即使为空数组也要更新
+    // Always update recentAllocations, even if it is an empty array
     recentAllocations.value = sortedAllocations;
   } catch (error) {
     console.error('[loadRecentAllocations] ERROR: Failed to load recent allocations:', error);
@@ -536,8 +535,8 @@ const loadRecentAllocations = async () => {
       stack: error.stack,
       response: error.response?.data
     });
-    // 在错误情况下，如果数据已经存在，不要清空它
-    // 只有在数据为空时才设置为空数组
+    // In case of error, if the data already exists, do not clear it
+    // Only set to an empty array when the data is empty
     if (!recentAllocations.value || recentAllocations.value.length === 0) {
       recentAllocations.value = [];
     }
@@ -547,7 +546,7 @@ const loadRecentAllocations = async () => {
 };
 
 const selectApplication = (application) => {
-  // 在切换申请前，保存当前申请的表单数据
+  // Before switching applications, save the form data of the current application
   if (selectedApplication.value?.requestId && allocationFormVisible.value) {
     saveTransferFormToStorage(selectedApplication.value.requestId);
   }
@@ -557,11 +556,11 @@ const selectApplication = (application) => {
   if (application) {
     allocationFormVisible.value = application.status === 'APPROVED';
     
-    // 如果状态是 APPROVED，尝试从 localStorage 恢复表单数据
+    // If the status is APPROVED, try to restore form data from localStorage
     if (allocationFormVisible.value) {
       const hasSavedData = loadTransferFormFromStorage(application.requestId);
       
-      // 如果没有保存的数据，才自动填充默认值
+      // If there is no saved data, automatically fill in the default values
       if (!hasSavedData) {
         transfer.from = 'Central Warehouse';
         transfer.to = application.warehouseName || '';
@@ -570,7 +569,7 @@ const selectApplication = (application) => {
         transfer.reason = application.reason || '';
       }
     } else {
-      // 如果不是 APPROVED 状态，清空表单
+      // If the status is not APPROVED, clear the form
       transfer.from = 'Central Warehouse';
       transfer.to = '';
       transfer.sku = '';
@@ -596,36 +595,36 @@ const approve = async (approved) => {
       remark: decisionRemark.value
     });
     
-    // 直接使用返回的 updated 数据，确保包含最新的 progress/timeline
+    // Use the returned updated data directly, ensure it contains the latest progress/timeline
     if (updated) {
       selectedApplication.value = updated;
     }
     
-    // 重新加载申请列表和 Recent Allocations 以获取最新状态
+    // Reload the application list and Recent Allocations to get the latest status
     await loadApplications();
     await loadRecentAllocations();
     
-    // 如果申请被拒绝，它可能不在 pending 列表中了，但我们需要保持选中状态以显示 timeline
-    // 如果申请还在 pending 列表中，更新为最新的数据
+    // If the application is rejected, it may not be in the pending list, but we need to keep the selected state to display the timeline
+    // If the application is still in the pending list, update to the latest data
     const allApplications = await fetchReplenishmentApplications();
     const refreshed = allApplications.find((item) => item.requestId === currentRequestId);
     
     if (refreshed) {
-      // 如果找到了，使用最新的数据（包含完整的 progress）
+      // If found, use the latest data (contains complete progress)
       selectedApplication.value = refreshed;
     } else if (updated) {
-      // 如果不在列表中（比如被拒绝了），保持使用返回的 updated 数据
+      // If not in the list (e.g. rejected), keep using the returned updated data
       selectedApplication.value = updated;
     }
     
-    // 根据状态设置 allocationFormVisible
+    // Set allocationFormVisible based on the status
     if (approved && selectedApplication.value?.status === 'APPROVED') {
       allocationFormVisible.value = true;
-      // 尝试从 localStorage 恢复表单数据
+      // Try to restore form data from localStorage
       const requestId = selectedApplication.value.requestId;
       const hasSavedData = loadTransferFormFromStorage(requestId);
       
-      // 如果没有保存的数据，才自动填充默认值
+      // If there is no saved data, automatically fill in the default values
       if (!hasSavedData) {
         transfer.from = 'Central Warehouse';
         transfer.to = selectedApplication.value.warehouseName || '';
@@ -635,7 +634,7 @@ const approve = async (approved) => {
       }
     } else {
       allocationFormVisible.value = false;
-      // 清空表单
+      // Clear the form
       transfer.from = 'Central Warehouse';
       transfer.to = '';
       transfer.sku = '';
@@ -677,10 +676,10 @@ const allocate = async () => {
       requestId: selectedApplication.value.requestId
     });
     
-    // 清除保存的表单数据
+    // Clear saved form data
     clearTransferFormStorage(selectedApplication.value.requestId);
     
-    // 重新加载应用和调拨单列表
+    // Reload the application and transfer order list
     await loadApplications();
     await loadRecentAllocations();
     window.alert('Transfer order created and dispatched');
@@ -689,17 +688,17 @@ const allocate = async () => {
   }
 };
 
-// 页面可见性变化时保存（用户切换标签页或最小化窗口）
+// Save when the page visibility changes (user switches tabs or minimizes the window)
 const handleVisibilityChange = () => {
   if (document.hidden && selectedApplication.value?.requestId && allocationFormVisible.value) {
     saveTransferFormToStorage(selectedApplication.value.requestId);
   }
 };
 
-// 数据加载函数，可重复调用
+  // Data loading function, can be called repeatedly
 const loadAllData = async () => {
   console.log('[loadAllData] Starting to load all data...');
-  // 确保数据加载，即使失败也要设置默认值
+  // Ensure data loading, even if it fails, set default values
   try {
     await Promise.all([
       loadApplications(),
@@ -708,8 +707,8 @@ const loadAllData = async () => {
     console.log('[loadAllData] All data loaded successfully');
   } catch (error) {
     console.error('[loadAllData] ERROR: Failed to load data:', error);
-    // 确保即使加载失败也显示空状态
-    // 但不要覆盖已经存在的数据
+    // Ensure even if loading fails, display empty state
+    // But do not overwrite existing data
     if (!applications.value) applications.value = [];
     if (!recentAllocations.value) recentAllocations.value = [];
   }
@@ -717,44 +716,44 @@ const loadAllData = async () => {
 
 onMounted(async () => {
   console.log('[onMounted] Component mounted, initializing...');
-  // 添加页面可见性监听
+  // Add page visibility listener
   document.addEventListener('visibilitychange', handleVisibilityChange);
   
-  // 初始加载数据
+  // Initial load data
   console.log('[onMounted] Loading initial data...');
   await loadAllData();
   console.log('[onMounted] Initial data loaded');
   
-  // 定期刷新申请列表和调拨单列表
+  // Periodically refresh the application and transfer order lists
   refreshIntervalId.value = setInterval(() => {
     console.log('[refreshInterval] Refreshing data...');
     loadApplications();
     loadRecentAllocations();
-  }, 5000); // 每5秒刷新一次
+  }, 5000); // Every 5 seconds refresh
   console.log('[onMounted] Auto-refresh interval set');
 });
 
-// 监听路由变化，确保切换回来时重新加载
+// Listen for route changes, ensure reloading when switching back
 watch(() => route.path, async (newPath, oldPath) => {
-  // 如果是同一个路由但参数变化，或者从其他路由切换回来，重新加载
+  // If the same route but the parameters change, or switch back from other routes, reload
   if (newPath === '/app/central/approvals' && newPath !== oldPath) {
     await loadAllData();
   }
 }, { immediate: false });
 
-// 页面卸载前保存表单数据并清理资源
+// Save form data and clean up resources before the page is unloaded
 onUnmounted(() => {
-  // 保存当前表单数据
+  // Save the current form data
   if (selectedApplication.value?.requestId && allocationFormVisible.value) {
     saveTransferFormToStorage(selectedApplication.value.requestId);
   }
   
-  // 清除定时器
+  // Clear the timer
   if (refreshIntervalId.value) {
     clearInterval(refreshIntervalId.value);
   }
   
-  // 移除事件监听
+  // Remove the event listener
   document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 </script>
@@ -767,7 +766,7 @@ onUnmounted(() => {
   gap: 24px;
 }
 
-/* 第一行：Pending Applications, Application Details, Approval Timeline */
+/* First row: Pending Applications, Application Details, Approval Timeline */
 .approval__pending {
   grid-column: 1;
   grid-row: 1;
@@ -783,7 +782,7 @@ onUnmounted(() => {
   grid-row: 1;
 }
 
-/* 第二行：Recent Allocations 和 Allocate Commodities */
+/* Second row: Recent Allocations and Allocate Commodities */
 .approval__allocations {
   grid-column: 1 / 3;
   grid-row: 2;
@@ -794,7 +793,7 @@ onUnmounted(() => {
   grid-row: 2;
 }
 
-/* 如果 Allocate Commodities 不显示，Timeline 占据整行 */
+/* If Allocate Commodities is not displayed, Timeline occupies the entire row */
 .approval__timeline:only-child {
   grid-column: 1 / 4;
 }

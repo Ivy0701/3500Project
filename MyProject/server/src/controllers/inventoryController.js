@@ -13,17 +13,17 @@ const PRODUCTS = [
   { id: 'PROD-005', name: 'Polo Shirt' },
   { id: 'PROD-006', name: 'Jogger Pants' }
 ];
-// 默认用于订单模块的“门店”库存位置（不影响区域/总仓调拨）
+// Default for "store" inventory location used by the order module (does not affect regional/central warehouse transfers)
 export const DEFAULT_STORE_LOCATION_ID = 'STORE-DEFAULT';
 
-// 生成调拨单号（与 transferController 中逻辑保持一致）
+// Generate transfer order number (consistent with logic in transferController)
 const genTransferId = () => {
   const now = new Date();
   return `TRF-${now.toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 900 + 100)}`;
 };
 
-// 初始化库存：为每个商品在总仓创建一条记录（仅在首次运行时）
-// 插入位置：保持为 /api/inventory/initialize 路由对应的处理函数
+// Initialize inventory: Create a record for each product in the central warehouse (only when running for the first time)
+// Insert position: Keep the corresponding processing function for the /api/inventory/initialize route
 export const initializeInventory = async (req, res, next) => {
   try {
     const existingCount = await Inventory.countDocuments();
@@ -50,7 +50,7 @@ export const initializeInventory = async (req, res, next) => {
   }
 };
 
-// 获取全部库存（仅用于后台统计界面）
+// Get all inventory (only used for backend statistics interface)
 export const getInventory = async (req, res, next) => {
   try {
     const inventory = await Inventory.find().sort({ productId: 1, locationId: 1 });
@@ -60,7 +60,7 @@ export const getInventory = async (req, res, next) => {
   }
 };
 
-// 根据位置获取库存：GET /api/inventory/:locationId
+// Get inventory by location: GET /api/inventory/:locationId
 export const getInventoryByLocation = async (req, res, next) => {
   try {
     const { locationId } = req.params;
@@ -70,13 +70,13 @@ export const getInventoryByLocation = async (req, res, next) => {
       return res.status(401).json({ message: 'Login required' });
     }
 
-    // 总仓库管理员可以访问所有位置
+    // Central warehouse managers can access all locations
     if (user.role === 'centralManager') {
       const items = await Inventory.find({ locationId }).sort({ productId: 1 });
       return res.json(items);
     }
 
-    // 简单权限：如果用户声明了 accessibleLocationIds，则只允许访问其中的仓库/门店
+    // Simple permission: If the user declares accessibleLocationIds, only allow access to the warehouses/stores within
     if (
       Array.isArray(user.accessibleLocationIds) &&
       user.accessibleLocationIds.length > 0 &&
@@ -92,7 +92,7 @@ export const getInventoryByLocation = async (req, res, next) => {
   }
 };
 
-// 按商品 + 位置查询单条库存
+// Query single inventory by product + location
 export const getInventoryByProductAndLocation = async (productId, locationId) => {
   try {
     return await Inventory.findOne({ productId, locationId });
@@ -101,12 +101,12 @@ export const getInventoryByProductAndLocation = async (productId, locationId) =>
   }
 };
 
-// 通用库存更新函数：在指定位置增减 available，同时做上下限校验
+// General inventory update function: Increase/decrease available at the specified location, and perform upper/lower limit checks
 export const updateInventoryQuantity = async (productId, quantityChange, locationId = DEFAULT_STORE_LOCATION_ID) => {
   try {
     let inventory = await Inventory.findOne({ productId, locationId });
 
-    // 不存在则初始化一条记录
+    // If not exists, initialize a record
     if (!inventory) {
       const product = PRODUCTS.find((p) => p.id === productId);
       if (!product) {
@@ -143,11 +143,11 @@ export const updateInventoryQuantity = async (productId, quantityChange, locatio
     inventory.lastUpdated = new Date();
     await inventory.save();
 
-    // 自动为分仓库（WH-EAST, WH-WEST, WH-NORTH, WH-SOUTH）生成向总仓库的补货申请：
-    // 条件：
-    //   - 位置为分仓库（WH-EAST, WH-WEST, WH-NORTH, WH-SOUTH）
-    //   - 可用库存低于 totalStock * 0.3（30%阈值）
-    //   - 且当前没有该商品、该仓库的待处理/处理中补货申请，避免重复创建
+    // Automatically generate replenishment applications to the central warehouse for regional warehouses (WH-EAST, WH-WEST, WH-NORTH, WH-SOUTH):
+    // Conditions:
+    //   - Location is a regional warehouse (WH-EAST, WH-WEST, WH-NORTH, WH-SOUTH)
+    //   - Available stock is less than 30% of total stock (30% threshold)
+    //   - And there is no pending/processing replenishment application for this product/warehouse, to avoid duplicate creation
     const regionalWarehouses = ['WH-EAST', 'WH-WEST', 'WH-NORTH', 'WH-SOUTH'];
     if (regionalWarehouses.includes(locationId)) {
       const totalStock = inventory.totalStock || 200;
@@ -158,7 +158,7 @@ export const updateInventoryQuantity = async (productId, quantityChange, locatio
         const replenishQty = Math.max(0, Math.ceil(targetStock - inventory.available));
 
         if (replenishQty > 0) {
-          // 检查是否已有未完成的补货申请
+          // Check if there is an incomplete replenishment application
           const existingRequest = await ReplenishmentRequest.findOne({
             productId: productId,
             warehouseId: locationId,
@@ -166,7 +166,7 @@ export const updateInventoryQuantity = async (productId, quantityChange, locatio
           });
 
           if (!existingRequest) {
-            // 创建补货预警
+            // Create replenishment alert
             const alertId = `ALERT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
             await ReplenishmentAlert.findOneAndUpdate(
               { productId, warehouseId: locationId },
@@ -187,7 +187,7 @@ export const updateInventoryQuantity = async (productId, quantityChange, locatio
               { upsert: true, new: true }
             );
 
-            // 自动创建补货申请
+            // Automatically create replenishment application
             const genRequestId = () => {
               const now = new Date();
               return `REQ-${now.toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 900 + 100)}`;
@@ -200,7 +200,7 @@ export const updateInventoryQuantity = async (productId, quantityChange, locatio
               productName: inventory.productName || productId,
               vendor: 'Central Warehouse',
               quantity: replenishQty,
-              deliveryDate: new Date(now.getTime() + 3 * 24 * 3600 * 1000), // 3天后
+              deliveryDate: new Date(now.getTime() + 3 * 24 * 3600 * 1000), // 3 days later
               remark: `Auto-request: replenish ${replenishQty} units to reach target stock of ${Math.ceil(targetStock)}`,
               warehouseId: locationId,
               warehouseName: inventory.locationName || locationId,
@@ -236,12 +236,12 @@ export const updateInventoryQuantity = async (productId, quantityChange, locatio
       }
     }
 
-    // 自动为所有门店创建低库存警报和补货调拨单：
-    // 条件：
-    //   - 位置为门店（STORE-*）
-    //   - 可用库存低于 totalStock * 0.3（30%阈值）
-    //   - 创建 ReplenishmentAlert 以便区域仓库管理员看到
-    //   - 创建或更新调拨单，从对应的区域仓库调拨
+    // Automatically create low stock alerts and replenishment transfer orders for all stores:
+    // Conditions:
+    //   - Location is a store (STORE-*)
+    //   - Available stock is less than 30% of total stock (30% threshold)
+    //   - Create ReplenishmentAlert so that regional warehouse managers can see it
+    //   - Create or update transfer order, from the corresponding regional warehouse
     const allStores = [
       'STORE-EAST-01', 'STORE-EAST-02',
       'STORE-WEST-01', 'STORE-WEST-02',
@@ -254,7 +254,7 @@ export const updateInventoryQuantity = async (productId, quantityChange, locatio
       const threshold30Percent = totalStock * 0.3;
       
       if (inventory.available < threshold30Percent) {
-        // 确定对应的区域仓库
+        // Determine the corresponding regional warehouse
         let fromLocationId = 'WH-EAST';
         let fromLocationName = 'East Warehouse';
         if (locationId.startsWith('STORE-WEST')) {
@@ -275,11 +275,11 @@ export const updateInventoryQuantity = async (productId, quantityChange, locatio
           `[Low Stock Alert] ${locationId}: productId=${productId}, available=${inventory.available}, threshold=${Math.ceil(threshold30Percent)}, replenishQty=${replenishQty}`
         );
 
-        // 门店缺货时，只创建调拨单，不创建 ReplenishmentAlert
-        // ReplenishmentAlert 只用于区域仓库向总仓库申请补货
-        // 创建或更新调拨单
+        // When the store is out of stock, only create transfer order, not create ReplenishmentAlert
+        // ReplenishmentAlert is only used for regional warehouses to apply for replenishment to the central warehouse
+        // Create or update transfer order
         if (replenishQty > 0) {
-          // 查找是否有 PENDING 状态的调拨单（可以更新）
+          // Check if there is a PENDING status transfer order (can be updated)
           const existingPendingTransfer = await TransferOrder.findOne({
             productSku: productId,
             toLocationId: locationId,
@@ -288,7 +288,7 @@ export const updateInventoryQuantity = async (productId, quantityChange, locatio
           });
 
           if (existingPendingTransfer) {
-            // 如果已有 PENDING 调拨单，更新数量（取更大的值，确保能补足）
+            // If there is a PENDING transfer order, update the quantity (take the larger value, ensure it can be replenished)
             const newQuantity = Math.max(existingPendingTransfer.quantity, replenishQty);
             if (newQuantity !== existingPendingTransfer.quantity) {
               existingPendingTransfer.quantity = newQuantity;
@@ -307,7 +307,7 @@ export const updateInventoryQuantity = async (productId, quantityChange, locatio
               );
             }
           } else {
-            // 如果没有 PENDING 调拨单，检查是否有 IN_TRANSIT 的
+            // If there is no PENDING transfer order, check if there is a IN_TRANSIT transfer order
             const existingInTransitTransfer = await TransferOrder.findOne({
               productSku: productId,
               toLocationId: locationId,
@@ -361,8 +361,8 @@ export const updateInventoryQuantity = async (productId, quantityChange, locatio
   }
 };
 
-// 订单模块仍然可以调用的简化接口：默认门店库存
-// 调用位置：server/src/controllers/orderController.js 中 shipOrder / approveAfterSales
+// Simplified interface that the order module can still call: default store inventory
+// Call location: shipOrder / approveAfterSales in server/src/controllers/orderController.js
 export const decreaseInventory = async (productId, quantity) => {
   return await updateInventoryQuantity(productId, -quantity, DEFAULT_STORE_LOCATION_ID);
 };
@@ -371,7 +371,7 @@ export const increaseInventory = async (productId, quantity) => {
   return await updateInventoryQuantity(productId, quantity, DEFAULT_STORE_LOCATION_ID);
 };
 
-// PATCH /api/inventory/update 用于销售出货场景（根据前端传入的位置）
+// PATCH /api/inventory/update for sales shipment scenario (based on the position passed in by the frontend)
 export const updateInventoryForSale = async (req, res, next) => {
   try {
     const { productId, locationId, quantityChange } = req.body;
@@ -392,8 +392,8 @@ export const updateInventoryForSale = async (req, res, next) => {
   }
 };
 
-// PATCH /api/inventory/transfer 仓库/门店之间调拨
-// 事务逻辑：减少 fromLocation 库存，增加 toLocation 库存，要么全部成功，要么全部回滚
+// PATCH /api/inventory/transfer Warehouse/store transfer
+// Transaction logic: Decrease fromLocation inventory, increase toLocation inventory, either all succeed or all rollback
 export const transferInventory = async (req, res, next) => {
   const session = await mongoose.startSession();
 
@@ -413,13 +413,13 @@ export const transferInventory = async (req, res, next) => {
       return res.status(401).json({ message: 'Login required' });
     }
 
-    // 简化权限控制：仅允许区域/总仓管理员进行调拨
+    // Simplified permission control: Only allow regional/central warehouse managers to transfer
     if (!['regionalManager', 'centralManager', 'warehouse'].includes(user.role)) {
       return res.status(403).json({ message: 'Only warehouse / regional / central managers can transfer inventory' });
     }
 
     await session.withTransaction(async () => {
-      // 1. 从来源位置扣减库存
+      // 1. Decrease inventory from the source location
       const fromInventory = await Inventory.findOne({ productId, locationId: fromLocationId }).session(session);
       if (!fromInventory) {
         throw new Error(`Inventory not found for product ${productId} at ${fromLocationId}`);
@@ -435,7 +435,7 @@ export const transferInventory = async (req, res, next) => {
       fromInventory.lastUpdated = new Date();
       await fromInventory.save({ session });
 
-      // 2. 目标位置增加库存（不存在则初始化）
+      // 2. Increase inventory at the target location (initialize if not exists)
       let toInventory = await Inventory.findOne({ productId, locationId: toLocationId }).session(session);
 
       if (!toInventory) {

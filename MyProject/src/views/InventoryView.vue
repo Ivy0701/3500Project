@@ -97,13 +97,13 @@ import { createAlertsForLowStockItems } from '../services/replenishmentService.j
 
 const appStore = useAppStore();
 
-// 根据用户的区域动态确定位置
+// Determine the location dynamically based on the user's region
 const getLocationsByRegion = () => {
   const user = appStore.user;
   const region = user?.region || 'EAST';
   const assignedLocationId = user?.assignedLocationId || '';
   
-  // 根据 assignedLocationId 或 region 确定区域
+  // Determine the region based on assignedLocationId or region
   let regionKey = 'EAST';
   if (assignedLocationId) {
     if (assignedLocationId.includes('WEST')) regionKey = 'WEST';
@@ -259,12 +259,12 @@ const selectItem = (item) => {
 };
 
 const getWarningLevel = (quantity, totalStock, productId) => {
-  // 指定的6个产品：PROD-001到PROD-006
+  // The specified 6 products: PROD-001 to PROD-006
   const targetProducts = ['PROD-001', 'PROD-002', 'PROD-003', 'PROD-004', 'PROD-005', 'PROD-006'];
   
   if (quantity === 0) return { level: 'danger', label: 'Out of Stock' };
   
-  // 对于指定的6个产品，如果available < totalStock * 0.3，显示Low Stock（黄色）
+  // For the specified 6 products, if available < totalStock * 0.3, display Low Stock (yellow)
   if (targetProducts.includes(productId) && totalStock > 0) {
     const threshold30Percent = totalStock * 0.3;
     if (quantity < threshold30Percent) {
@@ -272,7 +272,7 @@ const getWarningLevel = (quantity, totalStock, productId) => {
     }
   }
   
-  // 其他情况使用原来的threshold逻辑
+  // For other cases, use the original threshold logic
   const metadata = productMetadata[productId];
   if (metadata && quantity < metadata.threshold) {
     return { level: 'warning', label: 'Low Stock' };
@@ -290,13 +290,13 @@ const getRestockAdvice = (quantity, threshold) => {
 const loadInventory = async () => {
   isLoading.value = true;
   try {
-    // 根据用户区域动态获取位置
+    // Get the location dynamically based on the user's region
     const userLocations = locations.value;
     const warehouseId = userLocations[0].id;
     const store1Id = userLocations[1].id;
     const store2Id = userLocations[2].id;
     
-    // 并行加载三个位置的库存
+    // Load the inventory of three locations in parallel
     const [warehouseData, store1Data, store2Data] = await Promise.all([
       getInventoryByLocation(warehouseId),
       getInventoryByLocation(store1Id),
@@ -305,7 +305,7 @@ const loadInventory = async () => {
 
     inventory.length = 0;
 
-    // 合并三个位置的数据
+    // Merge the data from three locations
     const allData = [
       ...warehouseData.map(item => ({ ...item, locationId: warehouseId, locationName: userLocations[0].name })),
       ...store1Data.map(item => ({ ...item, locationId: store1Id, locationName: userLocations[1].name })),
@@ -339,7 +339,7 @@ const loadInventory = async () => {
       }
     });
     
-    // 找出所有low stock的商品并创建replenishment alerts
+    // Find all low stock items and create replenishment alerts
     try {
       const lowStockItems = inventory.filter(item => item.warningLabel === 'Low Stock');
       if (lowStockItems.length > 0) {
@@ -351,10 +351,10 @@ const loadInventory = async () => {
       }
     } catch (error) {
       console.error('Failed to create alerts for low stock items:', error);
-      // 不阻止页面加载，静默失败
+      // Do not block page loading, silently fail
     }
 
-    // 提取所有门店名称用于筛选
+    // Extract all store names for filtering
     const uniqueStores = [...new Set(inventory.map(item => item.store))];
     stores.value = uniqueStores;
 

@@ -15,10 +15,10 @@ const PRODUCTS = [
 ];
 
 /**
- * 初始化总仓库存：
+ * Initialize central warehouse inventory:
  * - Central Warehouse（WH-CENTRAL）：每件商品 totalStock = 3000, available = 3000
  *
- * 使用方式（在项目根目录执行一次即可）：
+ * Usage (in the project root directory):
  *   node server/src/scripts/initCentralInventory.js
  */
 const initCentralInventory = async () => {

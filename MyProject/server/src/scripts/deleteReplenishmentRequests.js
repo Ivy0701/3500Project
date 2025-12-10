@@ -13,7 +13,7 @@ const deleteReplenishmentRequests = async () => {
     await connectDb();
     console.log('✅ MongoDB connected successfully');
     
-    // 要删除的补货申请ID列表
+    // List of replenishment request IDs to delete
     const requestIdsToDelete = [
       'REQ-20251207-333',
       'REQ-20251207-571',
@@ -21,7 +21,7 @@ const deleteReplenishmentRequests = async () => {
       'REQ-20251207-391'
     ];
     
-    // 要删除的调拨单ID列表
+    // List of transfer order IDs to delete
     const transferIdsToDelete = [
       'TRF-20251207-797'
     ];
@@ -35,15 +35,15 @@ const deleteReplenishmentRequests = async () => {
     let notFoundRequests = 0;
     let notFoundTransfers = 0;
     
-    // 删除补货申请
+    // Delete replenishment requests
     for (const requestId of requestIdsToDelete) {
       const request = await ReplenishmentRequest.findOne({ requestId });
       
       if (request) {
-        // 查找关联的调拨单
+        // Find related transfer orders
         const relatedTransfers = await TransferOrder.find({ requestId });
         
-        // 删除关联的调拨单和接收计划
+        // Delete related transfer orders and receiving schedules
         for (const transfer of relatedTransfers) {
           await ReceivingSchedule.deleteMany({ planNo: transfer.transferId });
           await TransferOrder.deleteOne({ transferId: transfer.transferId });
@@ -51,7 +51,7 @@ const deleteReplenishmentRequests = async () => {
           deletedTransfers++;
         }
         
-        // 删除补货申请
+        // Delete replenishment request
         await ReplenishmentRequest.deleteOne({ requestId });
         console.log(`✅ Deleted replenishment request: ${requestId}`);
         deletedRequests++;
@@ -61,16 +61,16 @@ const deleteReplenishmentRequests = async () => {
       }
     }
     
-    // 删除调拨单
+    // Delete transfer orders
     for (const transferId of transferIdsToDelete) {
       const transfer = await TransferOrder.findOne({ transferId });
       
       if (transfer) {
-        // 删除关联的接收计划
+        // Delete related receiving schedules
         const scheduleResult = await ReceivingSchedule.deleteMany({ planNo: transferId });
         console.log(`✅ Deleted ${scheduleResult.deletedCount} receiving schedule(s) for ${transferId}`);
         
-        // 删除调拨单
+        // Delete transfer order
         await TransferOrder.deleteOne({ transferId });
         console.log(`✅ Deleted transfer order: ${transferId}`);
         deletedTransfers++;

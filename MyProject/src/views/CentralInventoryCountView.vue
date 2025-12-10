@@ -141,7 +141,7 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { getInventoryByLocation } from '../services/inventoryService';
 
-// 位置映射
+// Location mapping
 const locationMap = {
   'WH-CENTRAL': 'Central Warehouse',
   'WH-EAST': 'East Warehouse',
@@ -170,9 +170,9 @@ const regionalWarehouseInventory = ref([]);
 const regionalStoreInventory = ref([]);
 const loading = ref(false);
 
-// 产品图标映射 - 根据顾客购买界面的图标
+// Product icon mapping - based on the product icon in the customer purchase interface
 const getProductIcon = (productName, sku) => {
-  // 优先根据 SKU 精确匹配
+  // Prioritize matching by SKU
   if (sku) {
     const productIconMap = {
       'PROD-001': '👕', // Casual T-Shirt
@@ -187,11 +187,11 @@ const getProductIcon = (productName, sku) => {
     }
   }
   
-  // 如果没有 SKU 或 SKU 不匹配，则根据产品名称匹配
+  // If there is no SKU or the SKU does not match, match by product name
   if (!productName) return '📦';
   const name = productName.toLowerCase();
   
-  // 精确匹配产品名称
+  // Exact match product name
   if (name === 'casual t-shirt') return '👕';
   if (name === 'classic denim jeans') return '👖';
   if (name === 'hooded sweatshirt') return '🧥';
@@ -199,7 +199,7 @@ const getProductIcon = (productName, sku) => {
   if (name === 'polo shirt') return '👔';
   if (name === 'jogger pants') return '👖';
   
-  // 模糊匹配（作为后备方案）
+  // Fuzzy matching (as a fallback)
   if (name.includes('t-shirt') && !name.includes('polo')) return '👕';
   if (name.includes('jeans')) return '👖';
   if (name.includes('sweatshirt') || name.includes('hood')) return '🧥';
@@ -211,37 +211,37 @@ const getProductIcon = (productName, sku) => {
   return '📦';
 };
 
-// 警告级别计算
-// 注意：此逻辑对所有位置（区域仓库、门店、总仓库）都生效
-// 1. 库存为0时，显示 "Out of Stock"（与门店库存逻辑一致）
-// 2. 库存低于阈值时，显示 "Low Stock"
-// 3. 其他情况显示 "Normal"
+// Warning level calculation
+// Note: This logic applies to all locations (regional warehouses, stores, and central warehouse)
+// 1. When the stock is 0, display "Out of Stock" (consistent with the store inventory logic)
+// 2. When the stock is below the threshold, display "Low Stock"
+// 3. Otherwise, display "Normal"
 const getWarningLevel = (available, minThreshold = 0) => {
-  // 优先检查：库存为0时显示 "Out of Stock"（区域仓库和门店都使用此逻辑）
+  // Prioritize checking: when the stock is 0, display "Out of Stock" (both regional warehouses and stores use this logic)
   if (available === 0) return { level: 'danger', label: 'Out of Stock' };
-  // 库存低于阈值时显示 "Low Stock"
+  // When the stock is below the threshold, display "Low Stock"
   if (available <= minThreshold) return { level: 'warning', label: 'Low Stock' };
-  // 其他情况显示 "Normal"
+  // Otherwise, display "Normal"
   return { level: 'default', label: 'Normal' };
 };
 
-// 标准化库存项
+// Standardize inventory items
 const normalizeItem = (row) => {
   const available = row.available ?? 0;
   const total = row.totalStock ?? 0;
   
-  // 区域仓库和门店使用 totalStock * 0.3 作为阈值
-  // 总仓库使用数据库中的 minThreshold
+  // Regional warehouses and stores use totalStock * 0.3 as the threshold
+  // The central warehouse uses minThreshold from the database
   const regionalWarehouses = ['WH-EAST', 'WH-WEST', 'WH-NORTH', 'WH-SOUTH'];
   const isStore = row.locationId?.startsWith('STORE-');
   const isRegionalWarehouse = regionalWarehouses.includes(row.locationId);
   
   let effectiveThreshold;
   if (isRegionalWarehouse || isStore) {
-    // 区域仓库和门店：使用 totalStock * 0.3 作为阈值
+    // Regional warehouses and stores: use totalStock * 0.3 as the threshold
     effectiveThreshold = total > 0 ? Math.ceil(total * 0.3) : 0;
   } else {
-    // 总仓库：使用数据库中的 minThreshold
+    // The central warehouse uses minThreshold from the database
     effectiveThreshold = row.minThreshold ?? 0;
   }
   
@@ -260,15 +260,15 @@ const normalizeItem = (row) => {
   };
 };
 
-// 获取所有库存数据
+// Get all inventory data
 const loadAllInventory = async () => {
   loading.value = true;
   try {
-    // 总仓库
+    // The central warehouse
     const centralData = await getInventoryByLocation('WH-CENTRAL');
     centralInventory.value = centralData.map(normalizeItem);
 
-    // 区域仓库
+    // Regional warehouses
     const regionalWarehouseIds = ['WH-EAST', 'WH-WEST', 'WH-NORTH', 'WH-SOUTH'];
     const regionalWarehouseData = await Promise.all(
       regionalWarehouseIds.map(async (id) => {
@@ -283,7 +283,7 @@ const loadAllInventory = async () => {
     );
     regionalWarehouseInventory.value = regionalWarehouseData.flat();
 
-    // 区域门店
+    // Regional stores
     const regionalStoreIds = [
       'STORE-EAST-01', 'STORE-EAST-02',
       'STORE-WEST-01', 'STORE-WEST-02',
@@ -310,7 +310,7 @@ const loadAllInventory = async () => {
   }
 };
 
-// 过滤逻辑
+// Filter logic
 const filteredCentralInventory = computed(() => {
   return centralInventory.value.filter((item) => {
     const matchSku = !filters.sku || item.sku.toLowerCase().includes(filters.sku.toLowerCase());

@@ -16,19 +16,19 @@ export const getReplenishmentAlerts = async (req, res, next) => {
     const user = req.user;
     let filter = {};
     
-    // 如果是区域仓库管理员，只返回其负责仓库的警报
+    // If the user is a regional warehouse manager, only return alerts for their assigned warehouse
     if (user && user.role === 'regionalManager' && user.assignedLocationId) {
       filter.warehouseId = user.assignedLocationId;
     } else if (user && user.role === 'regionalManager' && user.accessibleLocationIds && user.accessibleLocationIds.length > 0) {
-      // 如果使用 accessibleLocationIds，过滤仓库相关的警报
+      // If using accessibleLocationIds, filter alerts related to warehouses
       const warehouseIds = user.accessibleLocationIds.filter(id => id.startsWith('WH-'));
       if (warehouseIds.length > 0) {
         filter.warehouseId = { $in: warehouseIds };
       }
     }
-    // 中央管理员可以看到所有警报，不需要过滤
+    // Central warehouse managers can see all alerts, no filtering needed
     
-    // 将中文的 alert trigger 转换为英文
+    // Translate the Chinese alert trigger to English
     const translateAlertTrigger = (text) => {
       if (!text) return text;
       return text
@@ -40,7 +40,7 @@ export const getReplenishmentAlerts = async (req, res, next) => {
 
     const alerts = await ReplenishmentAlert.find(filter).sort({ createdAt: -1 });
     
-    // 转换 alert 中的中文 trigger 为英文，并更新数据库
+    // Translate the Chinese alert trigger to English, and update the database
     for (const alert of alerts) {
       if (alert.trigger && /[\u4e00-\u9fa5]/.test(alert.trigger)) {
         const englishTrigger = translateAlertTrigger(alert.trigger);
@@ -62,7 +62,7 @@ export const getReplenishmentProgress = async (req, res, next) => {
     const user = req.user;
     let filter = {};
     
-    // 如果是区域仓库管理员，只返回其负责仓库的进度
+    // If the user is a regional warehouse manager, only return the progress for their assigned warehouse
     if (user && user.role === 'regionalManager' && user.assignedLocationId) {
       filter.warehouseId = user.assignedLocationId;
     } else if (user && user.role === 'regionalManager' && user.accessibleLocationIds && user.accessibleLocationIds.length > 0) {
@@ -115,10 +115,10 @@ export const submitReplenishmentApplication = async (req, res, next) => {
       return res.status(400).json({ message: 'Quantity must be greater than 0' });
     }
 
-    // 将中文的 remark 和 reason 转换为英文
+    // Translate the Chinese remark and reason to English
     const translateToEnglish = (text) => {
       if (!text) return text;
-      // 替换中文文本为英文
+      // Replace Chinese text with English
       return text
         .replace(/库存低于总库存的30% \(当前: (\d+) < (\d+)\)/g, 'Inventory below 30% of total stock (current: $1 < $2)')
         .replace(/区域仓库库存低于总库存的30% \(当前: (\d+) < (\d+)\)/g, 'Regional warehouse inventory below 30% of total stock (current: $1 < $2)')
@@ -165,12 +165,12 @@ export const submitReplenishmentApplication = async (req, res, next) => {
       await ReplenishmentAlert.findOneAndDelete({ alertId });
     }
 
-    // 根据用户角色和仓库ID过滤返回的数据
+    // Filter the data returned based on the user role and warehouse ID
     const user = req.user;
     let alertFilter = {};
     let progressFilter = {};
     
-    // 如果是区域仓库管理员，只返回其负责仓库的警报和进度
+    // If the user is a regional warehouse manager, only return the alerts and progress for their assigned warehouse
     if (user && user.role === 'regionalManager') {
       if (user.assignedLocationId) {
         alertFilter.warehouseId = user.assignedLocationId;
@@ -183,9 +183,9 @@ export const submitReplenishmentApplication = async (req, res, next) => {
         }
       }
     }
-    // 中央管理员可以看到所有数据，不需要过滤
+    // Central warehouse managers can see all data, no filtering needed
 
-    // 将中文的 alert trigger 转换为英文
+    // Translate the Chinese alert trigger to English
     const translateAlertTrigger = (text) => {
       if (!text) return text;
       return text
@@ -200,7 +200,7 @@ export const submitReplenishmentApplication = async (req, res, next) => {
       ReplenishmentRequest.find(progressFilter).sort({ createdAt: -1 }).limit(10)
     ]);
 
-    // 转换 alert 中的中文 trigger 为英文，并更新数据库
+    // Translate the Chinese alert trigger to English, and update the database
     for (const alert of alerts) {
       if (alert.trigger && /[\u4e00-\u9fa5]/.test(alert.trigger)) {
         const englishTrigger = translateAlertTrigger(alert.trigger);
@@ -244,7 +244,7 @@ export const getReplenishmentApplications = async (req, res, next) => {
       filter.status = status;
     }
     
-    // 如果是区域仓库管理员，只返回其负责仓库的申请
+    // If the user is a regional warehouse manager, only return the applications for their assigned warehouse
     if (user && user.role === 'regionalManager') {
       if (warehouseId) {
         filter.warehouseId = warehouseId;
@@ -260,9 +260,9 @@ export const getReplenishmentApplications = async (req, res, next) => {
       filter.warehouseId = warehouseId;
     }
     
-    // 总仓库管理员只应该看到区域仓库向总仓库的补货申请
-    // 区域仓库向总仓库的补货申请：vendor 为 'Central Warehouse'
-    // 门店向区域仓库的补货申请：vendor 为空字符串或区域仓库名称，不应该显示给总仓库管理员
+    // Central warehouse managers should only see replenishment applications from regional warehouses to the central warehouse
+    // Replenishment applications from regional warehouses to the central warehouse: vendor is 'Central Warehouse'
+    // Replenishment applications from stores to regional warehouses: vendor is empty string or regional warehouse name, should not be displayed to central warehouse managers
     if (user && user.role === 'centralManager') {
       filter.vendor = 'Central Warehouse';
     }
@@ -299,9 +299,9 @@ export const updateReplenishmentApplicationStatus = async (req, res, next) => {
       });
       await request.save({ session });
 
-      // 如果请求被拒绝，重新创建 ReplenishmentAlert，使其重新出现在区域仓库管理员的 alerts 中
+      // If the request is rejected, recreate ReplenishmentAlert,使其重新出现在区域仓库管理员的 alerts 中
       if (decision === 'REJECTED') {
-        // 获取当前库存信息
+        // Get the current inventory information
         const inventory = await Inventory.findOne({
           productId: request.productId,
           locationId: request.warehouseId
@@ -311,7 +311,7 @@ export const updateReplenishmentApplicationStatus = async (req, res, next) => {
           const available = inventory.available || 0;
           const totalStock = inventory.totalStock || 0;
           
-          // 如果库存仍然低于阈值，重新创建 alert
+          // If the inventory is still below the threshold, recreate the alert
           let shouldCreateAlert = false;
           let threshold30Percent = 0;
           let triggerText = '';
@@ -327,7 +327,7 @@ export const updateReplenishmentApplicationStatus = async (req, res, next) => {
               triggerText = `Regional warehouse inventory below 30% of total stock (current: ${available} < ${Math.ceil(threshold30Percent)})`;
             }
           } else {
-            // 如果没有 totalStock，使用默认阈值
+            // If there is no totalStock, use the default threshold
             const defaultThreshold = 50;
             if (available < defaultThreshold) {
               shouldCreateAlert = true;
@@ -361,9 +361,9 @@ export const updateReplenishmentApplicationStatus = async (req, res, next) => {
         }
       }
 
-      // 注意：批准后不再自动创建调拨单
-      // 调拨单应该由前端通过 Allocate Commodities 表单手动创建
-      // 这样可以允许总仓库管理员选择从哪个仓库调货
+      // Note: After approval, no automatic creation of transfer orders
+      // Transfer orders should be manually created by the frontend through the Allocate Commodities form
+      // This allows the central warehouse manager to choose which warehouse to dispatch from
     });
 
     const updatedRequest = await ReplenishmentRequest.findOne({ requestId });
@@ -383,7 +383,7 @@ export const checkAndCreateReplenishmentAlerts = async (_req, res, next) => {
     
     const createdAlerts = [];
     
-    // 检查每个区域仓库中的指定产品
+    // Check each regional warehouse for the specified products
     for (const warehouseId of regionalWarehouses) {
       for (const productId of targetProducts) {
         const inventory = await Inventory.findOne({
@@ -394,20 +394,20 @@ export const checkAndCreateReplenishmentAlerts = async (_req, res, next) => {
         if (inventory && inventory.totalStock > 0) {
           const threshold30Percent = inventory.totalStock * 0.3;
           
-          // 如果available < totalStock * 0.3，创建或更新alert
+          // If available < totalStock * 0.3, create or update the alert
           if (inventory.available < threshold30Percent) {
-            // 检查是否已有未完成的补货申请
+            // Check if there is an incomplete replenishment application
             const existingRequest = await ReplenishmentRequest.findOne({
               productId,
               warehouseId,
               status: { $in: ['PENDING', 'PROCESSING', 'APPROVED'] }
             });
             
-            // 如果没有未完成的申请，创建或更新alert
+            // If there is no incomplete application, create or update the alert
             if (!existingRequest) {
               const alertId = `ALERT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-              const suggestedQty = Math.max(0, Math.ceil(inventory.totalStock * 0.9 - inventory.available)); // 建议补到90%
-              const shortageQty = Math.ceil(threshold30Percent - inventory.available); // 缺货数量
+              const suggestedQty = Math.max(0, Math.ceil(inventory.totalStock * 0.9 - inventory.available)); // Suggest to replenish to 90%
+              const shortageQty = Math.ceil(threshold30Percent - inventory.available); // Shortage quantity
               
               const alert = await ReplenishmentAlert.findOneAndUpdate(
                 { productId, warehouseId },
@@ -431,7 +431,7 @@ export const checkAndCreateReplenishmentAlerts = async (_req, res, next) => {
               createdAlerts.push(alert);
             }
           } else {
-            // 如果库存已恢复，删除对应的alert
+            // If the inventory has recovered, delete the corresponding alert
             await ReplenishmentAlert.findOneAndDelete({ productId, warehouseId });
           }
         }
@@ -470,16 +470,16 @@ export const createAlertsForLowStockItems = async (req, res, next) => {
         continue;
       }
       
-      // 检查是否已存在alert
+      // Check if the alert already exists
       const existingAlert = await ReplenishmentAlert.findOne({
         productId,
         warehouseId: locationId
       });
       
-      // 只要商品是low stock状态，就应该创建或更新alert
-      // 无论是否有未完成的申请，都应该显示alert（因为申请可能被拒绝，或者需要再次补货）
+      // If the product is low stock, an alert should be created or updated
+      // Whether there is an incomplete application or not, an alert should be displayed (because the application may be rejected, or needs to be replenished again)
       
-        // 计算缺货数量：如果totalStock存在，使用30%阈值；否则使用threshold
+        // Calculate the shortage quantity: if totalStock exists, use the 30% threshold; otherwise use the threshold
       let shortageQty = 0;
       let suggestedQty = 0;
       let triggerText = '';
@@ -491,10 +491,10 @@ export const createAlertsForLowStockItems = async (req, res, next) => {
         triggerText = `Inventory below 30% of total stock (current: ${available} < ${Math.ceil(threshold30Percent)})`;
       } else if (threshold && threshold > 0) {
           shortageQty = Math.max(0, Math.ceil(threshold - available));
-          suggestedQty = Math.max(0, Math.ceil((threshold * 3) - available)); // 近似为 totalStock=threshold/0.3, 0.9*totalStock=3*threshold
+          suggestedQty = Math.max(0, Math.ceil((threshold * 3) - available)); // Approximate totalStock=threshold/0.3, 0.9*totalStock=3*threshold
         triggerText = `Inventory below safety threshold (current: ${available} < ${threshold})`;
       } else {
-        shortageQty = Math.max(0, Math.ceil(50 - available)); // 默认阈值50
+        shortageQty = Math.max(0, Math.ceil(50 - available)); // Default threshold 50
         suggestedQty = Math.max(0, Math.ceil(100 - available));
         triggerText = `Inventory below safety threshold (current: ${available})`;
       }

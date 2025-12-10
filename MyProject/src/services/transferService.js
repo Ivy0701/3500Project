@@ -3,7 +3,7 @@ import apiClient from './api';
 export const fetchTransfers = async (locationId) => {
   try {
     const params = {};
-    // 如果提供了locationId，添加到参数中；如果不提供，获取所有调拨单
+    // If locationId is provided, add it to the parameters; if not provided, get all transfer orders
     if (locationId) {
       params.locationId = locationId;
     }
@@ -17,7 +17,7 @@ export const fetchTransfers = async (locationId) => {
       dataLength: Array.isArray(response.data) ? response.data.length : 'N/A',
       data: response.data
     });
-    // 确保返回的是数组
+    // Ensure the return is an array
     if (Array.isArray(response.data)) {
       console.log('[fetchTransfers] Returning array of', response.data.length, 'items');
       return response.data;
@@ -35,7 +35,7 @@ export const fetchTransfers = async (locationId) => {
       status: error.response?.status,
       statusText: error.response?.statusText
     });
-    // 重新抛出错误，让调用者处理
+    // Re-throw the error, let the caller handle it
     throw error;
   }
 };

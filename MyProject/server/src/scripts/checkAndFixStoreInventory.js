@@ -8,9 +8,9 @@ import ReplenishmentRequest from '../models/ReplenishmentRequest.js';
 dotenv.config();
 
 /**
- * 检查门店库存并手动触发补货逻辑（如果库存低于阈值但没有补货请求）
+ * Check store inventory and manually trigger replenishment logic (if the inventory is below the threshold but no replenishment request)
  * 
- * 使用方式（在项目根目录执行）：
+ * Usage (in the project root directory):
  *   node server/src/scripts/checkAndFixStoreInventory.js
  */
 const checkAndFixStoreInventory = async () => {
@@ -19,7 +19,7 @@ const checkAndFixStoreInventory = async () => {
 
     console.log('Connected to MongoDB, checking store inventory...\n');
 
-    // 检查所有门店的库存
+    // Check all store inventory
     const stores = [
       'STORE-EAST-01', 'STORE-EAST-02',
       'STORE-WEST-01', 'STORE-WEST-02',
@@ -50,7 +50,7 @@ const checkAndFixStoreInventory = async () => {
           console.log(`   Available: ${inventory.available}`);
           console.log(`   Threshold: ${Math.ceil(threshold30Percent)}`);
 
-          // 确定对应的区域仓库
+          // Determine the corresponding regional warehouse
           let fromLocationId = 'WH-EAST';
           let fromLocationName = 'East Warehouse';
           if (storeId.startsWith('STORE-WEST')) {
@@ -64,7 +64,7 @@ const checkAndFixStoreInventory = async () => {
             fromLocationName = 'South Warehouse';
           }
 
-          // 检查是否有 PENDING 状态的调拨单
+          // Check if there is a PENDING status transfer order
           const existingPendingTransfer = await TransferOrder.findOne({
             productSku: productId,
             toLocationId: storeId,
@@ -75,7 +75,7 @@ const checkAndFixStoreInventory = async () => {
           if (existingPendingTransfer) {
             console.log(`   ✅ Transfer order exists: ${existingPendingTransfer.transferId}`);
           } else {
-            // 检查是否有 IN_TRANSIT 的调拨单
+            // Check if there is a IN_TRANSIT status transfer order
             const existingInTransitTransfer = await TransferOrder.findOne({
               productSku: productId,
               toLocationId: storeId,
@@ -86,7 +86,7 @@ const checkAndFixStoreInventory = async () => {
             if (existingInTransitTransfer) {
               console.log(`   ⚠️  Transfer in transit: ${existingInTransitTransfer.transferId}`);
             } else {
-              // 创建新的调拨单
+              // Create new transfer order
               const targetStock = totalStock * 0.9;
               const replenishQty = Math.max(0, Math.ceil(targetStock - inventory.available));
 

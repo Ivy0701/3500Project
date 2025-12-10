@@ -26,7 +26,7 @@ export const useAppStore = defineStore('app', {
       isAuthenticated: false,
       token: null
     },
-    selectedRole: null, // 当前选择的角色：customer, sales, regionalManager, centralManager
+    selectedRole: null, // Currently selected roles: customer, sales, regionalManager, centralManager
     alerts: [
       {
         id: 'SKU-001',
@@ -119,7 +119,7 @@ export const useAppStore = defineStore('app', {
       this.user = { ...user, name: translateCnName(user.name) };
       this.auth.isAuthenticated = true;
       this.auth.token = token;
-      // 根据用户角色设置selectedRole
+      // Set selectedRole based on the user role
       if (user.role) {
         this.selectedRole = user.role;
       }
@@ -133,7 +133,7 @@ export const useAppStore = defineStore('app', {
           this.user = { ...user, name: translateCnName(user.name) };
           this.auth.isAuthenticated = true;
           this.auth.token = token;
-          // 恢复角色信息
+          // Restore role information
           if (user.role) {
             this.selectedRole = user.role;
           }

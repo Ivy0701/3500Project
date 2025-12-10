@@ -25,7 +25,7 @@ const resetStoreInventory = async () => {
   try {
     await connectDb();
 
-    // 清空所有库存记录
+    // Clear all inventory records
     await Inventory.deleteMany({});
     console.log('Cleared all inventory records');
 

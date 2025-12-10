@@ -121,7 +121,6 @@ const alerts = ref([]);
 const progress = ref([]);
 const loading = ref(false);
 
-// 供应商改为服装行业（英文）
 const vendors = ['Fashion Apparel Manufacturing', 'Premium Garment Supply Chain', 'Trend Clothing Supplier'];
 
 const selectedAlertId = ref(null);
@@ -143,7 +142,7 @@ const loadReplenishmentData = async () => {
       fetchReplenishmentAlerts(),
       fetchReplenishmentProgress()
     ]);
-    // 只显示仓库的缺货预警（WH-EAST / WH-WEST / WH-NORTH / WH-SOUTH）
+    // Only display the low stock alerts of the warehouses (WH-EAST / WH-WEST / WH-NORTH / WH-SOUTH)
     const warehouseIds = ['WH-EAST', 'WH-WEST', 'WH-NORTH', 'WH-SOUTH'];
     alerts.value = alertData.filter((item) => warehouseIds.includes(item.warehouseId));
     progress.value = progressData;
@@ -166,7 +165,7 @@ const selectReminder = (reminder) => {
   application.product = reminder.productName;
   application.productId = reminder.productId;
   application.quantity = reminder.suggested;
-  application.vendor = 'Central Warehouse'; // 区域仓库只能向总仓库申请补货
+  application.vendor = 'Central Warehouse'; // Regional warehouses can only request replenishment from Central Warehouse
   application.remark = reminder.trigger;
 };
 
@@ -177,8 +176,8 @@ const submitApplication = async () => {
   }
 
   try {
-    // 区域仓库提交补货申请时，vendor 必须为 'Central Warehouse'
-    // 因为区域仓库只能向总仓库申请补货
+    // When a regional warehouse submits a replenishment application, vendor must be 'Central Warehouse'
+    // Because regional warehouses can only request replenishment from Central Warehouse
     const vendor = 'Central Warehouse';
     
     const { alerts: updatedAlerts, progress: updatedProgress } = await submitReplenishmentApplication({
@@ -194,8 +193,8 @@ const submitApplication = async () => {
       reason: application.remark || selectedAlert.value?.trigger
     });
 
-    // 后端已经根据用户角色过滤了数据，但为了安全起见，前端也进行过滤
-    // 只显示区域仓库的缺货预警（WH-EAST / WH-WEST / WH-NORTH / WH-SOUTH）
+    // The backend has already filtered the data based on the user role, but for safety, the frontend also filters it
+    // Only display the low stock alerts of the warehouses (WH-EAST / WH-WEST / WH-NORTH / WH-SOUTH)
     const warehouseIds = ['WH-EAST', 'WH-WEST', 'WH-NORTH', 'WH-SOUTH'];
     alerts.value = updatedAlerts.filter((item) => warehouseIds.includes(item.warehouseId));
     progress.value = updatedProgress;

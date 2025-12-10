@@ -15,11 +15,11 @@ const PRODUCTS = [
 ];
 
 /**
- * 初始化华东区域库存：
- * - 华东仓库（WH-EAST）：所有商品 available = 1000, totalStock = 1000
- * - 华东门店2（STORE-EAST-02）：所有商品 available = 100, totalStock = 200（假设和门店1一样）
+ * Initialize East Region inventory:  
+ * - East Warehouse（WH-EAST）：All items available = 1000, totalStock = 1000
+ * - East Store 2（STORE-EAST-02）：All items available = 100, totalStock = 200 (assuming the same as East Store 1)  
  *
- * 使用方式（在项目根目录）：
+ * Usage (in the project root directory):
  *   node server/src/scripts/initEastRegionInventory.js
  */
 const initEastRegionInventory = async () => {
@@ -30,7 +30,7 @@ const initEastRegionInventory = async () => {
 
     const docs = [];
 
-    // 1. 华东仓库（WH-EAST）：所有商品库存为1000
+    // 1. East Warehouse（WH-EAST）：All items are in stock at 1000.
     for (const product of PRODUCTS) {
       docs.push({
         productId: product.id,
@@ -46,7 +46,7 @@ const initEastRegionInventory = async () => {
       });
     }
 
-    // 2. 华东门店2（STORE-EAST-02）：所有商品库存为100（假设和门店1一样）
+    // 2. East Store 2（STORE-EAST-02）：All items are in stock at 100 (assuming the same as East Store 1)
     for (const product of PRODUCTS) {
       docs.push({
         productId: product.id,
@@ -62,7 +62,7 @@ const initEastRegionInventory = async () => {
       });
     }
 
-    // 使用 upsert 模式，如果已存在则更新，不存在则创建
+    // Use upsert mode, if it exists, update, if not, create
     let createdCount = 0;
     let updatedCount = 0;
 

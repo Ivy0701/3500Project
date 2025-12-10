@@ -12,7 +12,7 @@ const deleteTransferOrders = async () => {
     await connectDb();
     console.log('✅ MongoDB connected successfully');
 
-    // 要删除的调拨单ID列表
+    // List of transfer order IDs to delete
     const transferIdsToDelete = [
       'TRF-20251207-373',
       'TRF-20251206-961',
@@ -32,11 +32,11 @@ const deleteTransferOrders = async () => {
       const transfer = await TransferOrder.findOne({ transferId });
       
       if (transfer) {
-        // 删除关联的接收计划
+        // Delete related receiving schedules
         const scheduleResult = await ReceivingSchedule.deleteMany({ planNo: transferId });
         console.log(`✅ Deleted ${scheduleResult.deletedCount} receiving schedule(s) for ${transferId}`);
         
-        // 删除调拨单
+        // Delete transfer order
         await TransferOrder.deleteOne({ transferId });
         console.log(`✅ Deleted transfer order: ${transferId}`);
         deletedCount++;

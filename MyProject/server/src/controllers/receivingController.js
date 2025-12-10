@@ -73,8 +73,8 @@ export const completeReceiving = async (req, res, next) => {
     await session.withTransaction(async () => {
       const transfer = await TransferOrder.findOne({ transferId: planNo }).session(session);
       
-      // 在确认收货时，只增加目标仓库的库存
-      // 来源仓库的库存已在创建调拨单时减少
+      // Only increase the inventory at the target warehouse when receiving
+      // The inventory at the source warehouse was decreased when creating the transfer order
         console.log(`[Receiving] Increasing inventory at destination: ${storageLocationId}, product: ${schedule.productSku}, quantity: +${received}`);
         await adjustInventory({
           locationId: storageLocationId,
@@ -96,7 +96,7 @@ export const completeReceiving = async (req, res, next) => {
             supplier: schedule.supplier,
             productSku: schedule.productSku,
             received,
-            qualified: received, // 使用 received 作为 qualified
+            qualified: received, // Use received as qualified
             storageLocationId,
             issue: '',
             remark: remark || '',
@@ -106,7 +106,7 @@ export const completeReceiving = async (req, res, next) => {
         { session }
       );
 
-      // 更新调拨单状态为COMPLETED，并同步更新补货申请状态
+      // Update transfer order status to COMPLETED, and synchronize the replenishment application status
       if (transfer) {
         transfer.status = 'COMPLETED';
         transfer.inventoryUpdated = true;
@@ -117,7 +117,7 @@ export const completeReceiving = async (req, res, next) => {
         });
         await transfer.save({ session });
 
-        // 同步更新补货申请状态为ARRIVED，确保总仓库Recent Allocations状态正确
+        // Synchronize the replenishment application status to ARRIVED, ensuring the central warehouse Recent Allocations status is correct
         if (transfer.requestId) {
           await ReplenishmentRequest.findOneAndUpdate(
             { requestId: transfer.requestId },

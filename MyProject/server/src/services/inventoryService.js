@@ -3,7 +3,7 @@ import ReplenishmentAlert from '../models/ReplenishmentAlert.js';
 import ReplenishmentRequest from '../models/ReplenishmentRequest.js';
 import TransferOrder from '../models/TransferOrder.js';
 
-// 区域仓库列表常量
+// Regional warehouse list constant
 const regionalWarehouses = ['WH-EAST', 'WH-WEST', 'WH-NORTH', 'WH-SOUTH'];
 
 const genRequestId = () => {
@@ -47,7 +47,7 @@ export const adjustInventory = async ({
     options.session = session;
   }
 
-  // 根据位置类型设置正确的 totalStock
+  // Set the correct totalStock based on the location type
   const isRegionalWarehouse = regionalWarehouses.includes(locationId);
   const isStore = locationId.startsWith('STORE-');
   
@@ -64,7 +64,7 @@ export const adjustInventory = async ({
     defaultMinThreshold = 60;
     defaultMaxThreshold = 200;
   }
-  // 总仓库保持默认值（200，但实际应该更大，这里先保持兼容）
+  // Central warehouse keep default value (200, but should be larger in reality, here for compatibility)
 
   const inventory = await Inventory.findOneAndUpdate(
     { productId: productSku, locationId },
@@ -90,28 +90,28 @@ export const adjustInventory = async ({
     throw new Error(`Inventory cannot be negative for ${productSku} at ${locationId}`);
   }
   
-  // 检查库存是否超过 totalStock（对于区域仓库和门店）
+  // Check if the inventory exceeds totalStock (for regional warehouses and stores)
   if (typeof inventory.totalStock === 'number' && inventory.available > inventory.totalStock) {
     throw new Error(
       `Cannot exceed total stock for product ${productSku} at ${locationId}. Total Stock: ${inventory.totalStock}, Available: ${inventory.available}`
     );
   }
 
-  // 自动补货触发：仅对门店位置生效，available < 60 时为对应区域仓库生成补货请求 + 预警
-  // 同时创建从区域仓库到门店的调拨单（TransferOrder）
+  // Automatic replenishment trigger: only effective for store locations, generate replenishment requests + alerts for the corresponding regional warehouse when available < 60
+  // Create transfer orders from regional warehouses to stores (TransferOrder)
   const storeMapping = getWarehouseForStore(locationId);
   if (storeMapping && inventory.available < 60) {
     const { warehouseId, warehouseName } = storeMapping;
     const totalStock = inventory.totalStock || 200;
     const threshold30Percent = totalStock * 0.3; // 60 for stores with totalStock=200
 
-    // 1. 创建从区域仓库到门店的调拨单（TransferOrder）
+    // 1. Create transfer orders from regional warehouses to stores (TransferOrder)
     if (inventory.available < threshold30Percent) {
       const targetStock = totalStock * 0.9;
       const replenishQty = Math.max(0, Math.ceil(targetStock - inventory.available));
 
       if (replenishQty > 0) {
-        // 检查是否已有 PENDING 状态的调拨单
+        // Check if there is a PENDING status transfer order
         const existingPendingTransfer = await TransferOrder.findOne({
           productSku: productSku,
           toLocationId: locationId,
@@ -120,7 +120,7 @@ export const adjustInventory = async ({
         });
 
         if (!existingPendingTransfer) {
-          // 检查是否有 IN_TRANSIT 的调拨单
+          // Check if there is a IN_TRANSIT status transfer order
           const existingInTransitTransfer = await TransferOrder.findOne({
             productSku: productSku,
             toLocationId: locationId,
@@ -129,7 +129,7 @@ export const adjustInventory = async ({
           });
 
           if (!existingInTransitTransfer) {
-            // 创建新的调拨单
+            // Create new transfer order
             const transferId = genTransferId();
             const createTransfer = TransferOrder.create(
               [
@@ -167,8 +167,8 @@ export const adjustInventory = async ({
       }
     }
 
-    // 2. 为区域仓库生成向总仓库的补货请求（如果区域仓库库存也低）
-    // 检查是否已有未完成的补货申请
+    // 2. Generate replenishment requests to the central warehouse for regional warehouses (if the regional warehouse inventory is also low)
+    // Check if there is an incomplete replenishment application
     const baseFilter = {
       productId: productSku,
       warehouseId,
@@ -248,7 +248,7 @@ export const adjustInventory = async ({
     }
   }
 
-  // 检查区域仓库库存是否低于30%，如果是，创建replenishment alert
+  // Check if the regional warehouse inventory is below 30%, if so, create replenishment alert
   const targetProducts = ['PROD-001', 'PROD-002', 'PROD-003', 'PROD-004', 'PROD-005', 'PROD-006'];
   
   if (regionalWarehouses.includes(locationId) && targetProducts.includes(productSku)) {
@@ -256,7 +256,7 @@ export const adjustInventory = async ({
       const threshold30Percent = inventory.totalStock * 0.3;
       
       if (inventory.available < threshold30Percent) {
-        // 检查是否已有未完成的补货申请
+        // Check if there is an incomplete replenishment application
         const baseFilter = {
           productId: productSku,
           warehouseId: locationId,
@@ -296,7 +296,7 @@ export const adjustInventory = async ({
           await ReplenishmentAlert.findOneAndUpdate(alertFilter, alertUpdate, alertOptions);
         }
       } else {
-        // 如果库存已恢复，删除对应的alert
+        // If the inventory has recovered, delete the corresponding alert
         const deleteQuery = ReplenishmentAlert.findOneAndDelete({ productId: productSku, warehouseId: locationId });
         if (session) deleteQuery.session(session);
         await deleteQuery;

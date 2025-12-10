@@ -1,22 +1,22 @@
 import axios from 'axios';
 
-// 智能检测API基础地址
+// Intelligent detection of API base address
 const getApiBaseURL = () => {
-  // 优先使用环境变量配置
+  // Prioritize using environment variable configuration
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
   
-  // 在浏览器环境中，自动检测当前访问的hostname
+  // In the browser environment, automatically detect the current visited hostname
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
-    // 如果是IP地址或非localhost，使用相同的hostname
+    // If it is an IP address or not localhost, use the same hostname
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
       return `http://${hostname}:4000/api`;
     }
   }
   
-  // 默认使用localhost
+  // Default use localhost
   return 'http://localhost:4000/api';
 };
 

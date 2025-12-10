@@ -376,7 +376,7 @@ const getItemIcon = (productName) => {
   if (!productName) return '📦';
   const name = productName.toLowerCase();
   
-  // 精确匹配产品名称（与商城保持一致）
+  // Exact match product name (consistent with the mall)
   if (name === 'casual t-shirt') return '👕';
   if (name === 'classic denim jeans') return '👖';
   if (name === 'hooded sweatshirt') return '🧥';
@@ -384,7 +384,7 @@ const getItemIcon = (productName) => {
   if (name === 'polo shirt') return '👔';
   if (name === 'jogger pants') return '👖';
   
-  // 模糊匹配（作为后备方案）
+  // Fuzzy matching (as a fallback)
   if (name.includes('polo')) return '👔';
   if (name.includes('chino')) return '👔';
   if (name.includes('jogger')) return '👖';

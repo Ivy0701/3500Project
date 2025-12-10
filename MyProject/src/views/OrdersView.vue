@@ -196,7 +196,7 @@
 import { reactive, ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { fetchOrders, createOrder as createOrderRequest, confirmOrder as confirmOrderApi, cancelOrder as cancelOrderApi, shipOrder as shipOrderApi } from '../services/orderService.js';
 
-// 使用与顾客页面相同的商品数据
+// Use the same product data as the customer page
 const products = [
   { id: 'PROD-001', name: 'Casual T-Shirt', price: 29.99, colors: ['Black', 'White', 'Blue', 'Red', 'Gray'], sizes: ['S', 'M', 'L', 'XL'] },
   { id: 'PROD-002', name: 'Classic Denim Jeans', price: 59.99, colors: ['Blue', 'Black', 'Gray'], sizes: ['28', '30', '32', '34', '36'] },
@@ -323,7 +323,7 @@ const getItemIcon = (productName) => {
   if (!productName) return '📦';
   const name = productName.toLowerCase();
   
-  // 精确匹配产品名称（与商城保持一致）
+  // Exact match product name (consistent with the mall)
   if (name === 'casual t-shirt') return '👕';
   if (name === 'classic denim jeans') return '👖';
   if (name === 'hooded sweatshirt') return '🧥';
@@ -331,7 +331,7 @@ const getItemIcon = (productName) => {
   if (name === 'polo shirt') return '👔';
   if (name === 'jogger pants') return '👖';
   
-  // 模糊匹配（作为后备方案）
+  // Fuzzy matching (as a fallback)
   if (name.includes('polo')) return '👔';
   if (name.includes('chino')) return '👔';
   if (name.includes('jogger')) return '👖';
@@ -362,19 +362,19 @@ const loadOrders = async () => {
   }
 };
 
-// 自动刷新订单列表（每30秒刷新一次）
+// Automatically refresh the order list (every 30 seconds)
 let refreshInterval = null;
 
 onMounted(() => {
   loadOrders();
   
-  // 设置自动刷新
+  // Set automatic refresh
   refreshInterval = setInterval(() => {
     loadOrders();
-  }, 30000); // 30秒刷新一次
+  }, 30000); // Every 30 seconds refresh
 });
 
-// 组件卸载时清除定时器
+// Clear the timer when the component is unloaded
 onUnmounted(() => {
   if (refreshInterval) {
     clearInterval(refreshInterval);

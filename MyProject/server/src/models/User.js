@@ -23,13 +23,13 @@ const userSchema = new mongoose.Schema(
       required: true
     },
     /**
-     * 轻量级库存权限模型（用于库存联动、调拨权限控制）
+     * Lightweight inventory permission model (for inventory linkage, transfer permission control)
      *
-     * - assignedLocationId: 用户主要负责的仓库/门店，例如 "WH-EAST"、"STORE-EAST-01"
-     * - region: 负责的大区，例如 "ALL" | "EAST" | "WEST" | "NORTH" | "SOUTH"
-     * - accessibleLocationIds: 该用户可以查看/操作库存的所有 locationId 列表
+     * - assignedLocationId: The warehouse/store the user is primarily responsible for, e.g. "WH-EAST", "STORE-EAST-01"
+     * - region: The region the user is responsible for, e.g. "ALL" | "EAST" | "WEST" | "NORTH" | "SOUTH"
+     * - accessibleLocationIds: The list of all locationId that the user can view/operate the inventory
      *
-     * 对应示例文档中的：
+     * Corresponding to the example document:
      *   role: "CENTRAL_MANAGER",
      *   assignedLocationId: "WH-CENTRAL",
      *   accessibleLocationIds: ["WH-CENTRAL", "WH-EAST", ...],
